@@ -21,7 +21,7 @@ IMPORTS
 	Kernel32.DeleteFile = KERNEL32.DeleteFileA,
 	Kernel32.DisableThreadLibraryCalls = KERNEL32.DisableThreadLibraryCalls,
 	Kernel32.DuplicateHandle = KERNEL32.DuplicateHandle,
-    Kernel32.EnterCriticalSection = KERNEL32.EnterCriticalSection,
+	Kernel32.EnterCriticalSection = KERNEL32.EnterCriticalSection,
 	Kernel32.ExitProcess = KERNEL32.ExitProcess,
 	Kernel32.ExitThread = KERNEL32.ExitThread,
 	Kernel32.FindClose = KERNEL32.FindClose,
