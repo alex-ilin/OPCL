@@ -1,0 +1,1016 @@
+ETH Oberon for Windows 9x / NT / 2000 User's Guide
+
+Release 2.32
+
+E. Zeller
+(original text by M. Hausner & Johannes L. Marais)
+
+Copyright 1993 - 2000 ETH Zürich
+
+
+Table of Contents
+
+	1  Introduction
+	2  Installation and Startup
+	3  Release Notes
+	4  Differences to the Original Oberon
+	5  Module Reference
+		5.1  Standard Modules
+		5.2  Modules unique to Oberon for Windows
+	6  The Compiler
+		6.1  Module SYSTEM
+		6.2  Code Procedures
+		6.3  Inline Assembler
+		6.4  Interfacing to non-Oberon Libraries
+		6.5  Calling the Windows API and DLL Functions
+		6.6  Building EXE and DLL Executable Files with Oberon
+		6.7  Zero-Overhead Exception Handling
+
+ Disclaimer and legal issues (middle-click on the box) 
+
+
+1 Introduction
+
+ETH Oberon for Windows is an implementation of ETH Oberon for 
+Microsoft Windows NT/2000 and Windows 9x. This Oberon 
+distribution, is maintained by Emil Zeller. The original ETH 
+sources were used to compile this distribution --- copyrights 
+still remain with the ETH. Some improvements were made to improve 
+the usability and portability of the system, allthough most module 
+definitions remained the same. Non-portable modules or exported 
+objects are marked using Watson comments (e.g. (** non-portable 
+*)).
+
+Both the programming language Oberon and the ETH Oberon System 
+have been implemented. For a complete description of the language 
+and the system, the books about it are recommended. The Oberon-2 
+language reference ("The Programming Language Oberon") is 
+available as on-line documentation in Oberon.Report.Text. "The 
+Oberon Companion - A Guide to Using and Programming Oberon System 
+3" is available as on-line documentation as well, see Book.Tool.
+
+The original Oberon implementation is an operating system running 
+on a proprietary hardware, the Ceres workstation. EHT Oberon for 
+Windows, however, is not an operating system but runs as a Windows 
+application. The screen output of the Ceres workstation is shown 
+in a Windows window. This window can be controlled by the Window 
+Manager, i.e. it can be moved, resized or iconized. Upon 
+application startup, the Oberon window is maximized and covers the 
+entire screen area. The size of the virtual Ceres screen is the 
+size of the client area of the maximized Oberon window. This size 
+remains fixed, even if the window is resized.
+
+The Oberon user interface was designed with a large bitmap display 
+in mind. Oberon works best with a display of 1024 by 768 pixels or 
+bigger. However, Oberon for Windows will run with any size 
+display, but working with VGA resolution is far from optimum.
+
+Bug Reports
+
+Problems or bug reports can be mailed to zeller@inf.ethz.ch or 
+sent to
+	Emil Zeller
+	Institut für Computersysteme
+	ETH-Zentrum
+	CH-8092 Zürich
+	Switzerland.
+Please try to be as specific and concise as possible, since this 
+makes processing of messages faster and easier. If possible send 
+me your oberon.log file ( System.Set System Console := File ; 
+System.Set System Verbose := Yes). You should at least mention the 
+version number and host operating system you use (just copy the 
+lines that appear in the log viewer when Oberon is started).
+
+We would appreciate if you send us a postcard when you use this 
+distribution.
+
+Acknowledgements
+
+Many people have contributed to Oberon for Windows. A big thanks 
+goes to those people who released the sources of their 
+applications so that it could be adapted for this distribution. 
+Thanks goes to Niklaus Wirth, Jürg Gutknecht, Johannes L. Marais, 
+Matthias Hausner, Andreas Disteli, Karl Rege, Ralph Sommerer, 
+André Fischer, Niklaus Mannhart, Erich Oswald, Robert Hess, Josef 
+Templ, Andreas Würtz, Wolfgang Weck, Stefan Ludwig, Urs Hiestand, 
+Beat Stamm, Clemens Szyperski, Markus Dätwyler, Marc Sperisen, 
+Régis Crelier, Daniel Ponti, Robert Griesemer, Dominique Lebègue, 
+Pieter Muller, Patrick Saladin, Patrik Reali, Christian Hoffmann, 
+Erwin Oertli, Pascal Faivre, Michael Franz, Marc Brandis, Daniel 
+Diez, Nicolas Lewy, Martin Gitsels, Thomas Kistler, Brian Hawley, 
+Daniel Steiner and Frederic Rentsch. Countless other assistants at 
+the ETH, students and users have contributed in one way or another 
+to Oberon.
+
+
+2  Installation and Startup
+
+Installation instructions are presented in the file README.TXT and 
+the Setup.Tool.
+
+
+3  Release Notes
+
+Restrictions and Known Bugs in this Release
+
+	-	Note that screen output might differ slightly 
+depending on the printer used. If the word
+		spacing looks completely wrong on the display, then it 
+is most probably related to your printer
+		driver or you forgot to install the correct  printer 
+fonts (read Printers.Tool for more details).
+	-	Ceres Modules Diskette and Backup are not working 
+under Windows 9x (but on Windows
+		NT). A tool called DOSBackup is included to make 
+backups. It stores files on a normal MS-DOS
+		diskette with the DOS 8+3 filename convention. A file 
+called TRANS.TBL on the diskette contains
+		the mappings between Oberon and DOS filenames (read 
+DOSBackup.Tool for more details).
+	-	The Oberon window should be the topmost window on the 
+screen, or scrolling does not work
+		correctly.
+	-	A dialog box that opens on top of the Oberon display 
+sometimes does not reset the Windows
+		cursor back to the Oberon cursor. The cursor will 
+revert back to its correct form as soon as a gadget
+		is moved or resized. Some Window display drivers also 
+do not allow fading of a cursor, resulting in
+		two cursors super-imposed on each other.
+	-	Mouse events might go missing, causing some tracking 
+interaction to be performed in Oberon
+		although you are not touching the mouse. Pressing all 
+three buttons at the same time solves the
+		problem.
+
+
+4  Differences to the Original Oberon
+
+This section is about the differences to the original Oberon 
+system from a user's point of view. The original Oberon system is 
+described in The Oberon System by M. Reiser. The differences in 
+module interfaces are described in the next section.
+
+System implementation
+
+This is an implementation of Oberon System 3. It differs in one 
+aspect from Reiser's book in that it contains an additional module 
+Objects that forms the basis of object-persistancy and the Gadgets 
+System. In addition, many tools are included that are not 
+described in Reiser's book.
+
+Registry
+
+Oberon for Windows has a mechanism to store configuration data 
+permanently. The permanent storage is called the registry. The 
+registry is structured hierarchically into paths and keys. Each 
+path can be thought of as a dictionary that associates a value 
+with a key. Module Registry provides a program interface to the 
+registry (see below). The user interface is embodied in the 
+commands System.Set and System.Get. This release no longer uses a 
+ini file to store the registry information, the windows registry 
+is used instead. So if you want to use a shared Oberon 
+installation with different users, each user needs to install 
+oberon.reg. Registry settings are stored under the path:
+	HKEY_CURRENT_USER\Software\Oberon System 3\Release 2.32
+
+If a user wants to use different Oberon installations or different 
+registry sets. You must start Oberon with the command line 
+parameter "Registry" set to your version string.
+E.g.: oberon.exe -Registry=MySettings will start an Oberon system 
+which reads its settings from:
+	[HKEY_CURRENT_USER\Software\Oberon System 3\MySettings]
+
+Note: command line parameters passed to oberon.exe can are append 
+to the Oberon.Text in a section called CommandLine. Thus to get 
+the value for a command line parameter name use 
+Oberon.OpenScanner(S, "CommandLine.Name").
+
+System.Set ( ^ | path key := [ value ] )
+Enter a path and key in the registry and associate a value with 
+it. If a value is not given, the entry for the given path and key 
+is removed from the registry. Path, key, and value may be either 
+names or strings.
+Example: System.Set System Verbose := Yes ~
+
+System.Get ( ^ | path [ key ] )
+Inspect the value of a given path and key in the registry. Path 
+and key may be either names or strings.
+Example: System.Get Gadgets.Aliases ~
+
+Directories in Oberon
+
+Oberon has adopted the forward slash "/" as directory separator 
+(NOT the \ typically used on DOS). The adoption of this convention 
+puts Oberon in line with UNIX and WWW URL syntax. The option 
+character for commands is "\".
+
+Support for Multiple Directories
+
+The original Oberon implementation uses a flat file directory, 
+i.e. does not support subdirectories. Oberon for Windows allows to 
+open files from any directory, including floppy disks. When Oberon 
+opens a file and no explicit path is given, it looks first in the 
+current directory and then in all the directories listed under the 
+registry entry System Directories.
+This version of the Oberon system uses multiple sub-directories of 
+the Oberon directory to store parts of the system:
+
+	System	System files (Tool, Lib, Fnt, Panel, ...)
+	Docu	Documentation
+	Apps	Applications
+	Obj	Object files
+	Src	System source code (if installed)
+	Resource	Self-Contained Documents resources (if 
+installed)
+	Work	User directory
+
+Support for systems with two-button mice
+
+In older version of Oberon for Windows you could use the "ctrl" 
+key to simulate a missing middle mouse button. This version 
+features a new emulation scheme for you missing middle mouse 
+button.
+The left mouse button is interpreted as either middle or left 
+button depending on the type of frame under the mouse cursor. E.g. 
+when left clicking on a button the left click is interpreted as 
+middle click. When clicking in a TextGadget the left click is 
+interpreted as left click. If this automatic mapping of the left 
+button fails, e.g. for command strings in a text just press the 
+"ctrl" to invert the mapping.
+Note this automatic mapping is disabled the first time Oberon 
+detects a middle mouse key down event.
+
+
+5  Module Reference
+
+This section describes differences to the standard modules 
+described in The Oberon System by M. Reiser (see section 1). It 
+also describes modules unique to Oberon for Windows.
+
+5.1 Standard Modules
+
+Files
+
+The interface to the file system is identical with that of the 
+original Oberon system. 
+In Oberon Files.New creates a "anonymous" file. On Oberon for 
+Windows "anonymous" files are implemented using temporary files. 
+Temporary files are created in the systems temp directory (c:\temp 
+or c:\windows\temp). If Oberon crashes or the Oberon Process is 
+killed by the task manager, temp files are not deleted. To create 
+a file "on spot" (no temp file) use Files.Register just after 
+Files.New and Files.Close after finishing writing to the file.
+
+Display
+
+The procedures DefCC, DefCP, DrawCX, FadeCX, InitCC, InitCP, 
+SetCursor are not implemented. Procedure SetMode does nothing. 
+Procedure Map returns always 0 (the display bitmap is not directly 
+accessible).
+
+Input
+
+Input.Time() returns 'ticks' in increments of 1/Input.TimeUnitth 
+of seconds (1/1000th of seconds).
+Some special keys on the Ceres keyboard are mapped to the PC 
+keyboard as follows:
+
+	PC Keyboard	Ceres Keyboard	Function
+	
+	Backspace	DEL
+	F1	SETUP	mark viewer
+	F9	-	redraw the Oberon window
+	Ctrl-Enter	LINE FEED	line feed
+
+Fonts
+
+TrueType fonts are supported in a transparent way. 
+Fonts.This(name) also loads TrueType fonts. name has the following 
+syntax:
+
+	name = family size styles ".Scn.Fnt"
+
+E.g., Fonts.This("Arial43bi.Scn.Fnt") returns the font "Arial" in 
+boldface and italics and in 43 pixels size. Some fonts have spaces 
+in their names. For example "Times New Roman" can be specified as 
+"Times_New_Roman12.Scn.Fnt".
+
+Texts
+
+Some minor changes have been done in the Scanner to allow for 
+reading of file names with drive and path specifiers. The syntax 
+of legal tokens of class Texts.Name is:
+
+	Name = ( letter | "/" | "." ) { letter | digit | "/" | "." | 
+"@" | ":" | "_" }.
+
+System
+
+The command Quit leaves Oberon. The command ChangeDirectory ( "^" 
+| newdir ) changes the current directory. The command 
+CreateDirectory ( "^" | newDir ) creates a new directory newDir. 
+The command Directory ( [path]template [ "\d" ] | "^" ) accepts a 
+path specifier in front of the template. All Oberon files in the 
+directory viewer are listed alphabetically.
+The commands System.Set and System.Get serve to store values in 
+the registry and to inspect the contents of the registry (see 
+Registry in section 4).
+
+Types
+
+Interface module to the type system.
+
+Kernel
+
+The garbage collector (procedure GC) may be called at any time, 
+since local pointers on the stack are used as roots during the 
+mark phase of the garbage collection. The garbage collector is 
+also activated upon a call to NEW or SYSTEM.NEW if not enough heap 
+space is available to allocate.
+The garbage collector supports finalization, that is an 
+application may register an object with the garbage collector. The 
+collector will notify the application if the object is collected. 
+The procedure Kernel.RegisterObject registers an object for 
+finalization:
+	
+	RegisterObject(obj: PTR, finalizer: Finalizer; basic: 
+BOOLEAN);
+	TYPE Finalizer = PROCEDURE (obj: PTR);
+	
+When the object is collected from the heap, the collector calls 
+the procedure finalizer which has been specified when registering 
+the object. An object which has been registered n times will be 
+finalized exactly n times (the finalizer need to be different). 
+The order in which objects are finalized is unspecified.
+NEW returns NIL if no more memory can be allocated. This is in 
+contrast to other Oberon versions that TRAP with "out of memory". 
+This allows you to check if memory cannot be allocated and so 
+allow you to free unneeded memory all under program control.
+
+5.2 Modules unique to Oberon for Windows
+
+Registry
+
+Module Registry is an interface to the initialization file 
+specified at startup time. It serves to store configuration data 
+for the system and applications. The registry is structured 
+hierarchically into paths and keys. Paths may contain an arbitrary 
+number of keys. To each (path, key) pair, a value is associated. 
+See Watson.ShowDef Registry for more details.
+The user interface to the registry is provided by means of the 
+commands System.Set and System.Get.
+
+Clipboard
+
+Module Clipboard supports data exchange across applications via 
+the Windows clipboard. The command Clipboard.Copy copies the most 
+recent text selection to the clipboard. Cut is like Copy, but also 
+deletes the selection. Paste gets the text in the clipboard and 
+inserts it at the caret position.
+Clipboard.Snapshot takes a snapshot of the marked viewer and puts 
+it into the clipboard. If no viewer is marked, a snapshot of the 
+entire Oberon window is taken.
+
+
+6  The Compiler
+
+The Compiler implements Oberon-2 as defined in the language report 
+contained in the file Oberon.Report.Text. This section describes 
+system specific topics.
+
+6.1 Module SYSTEM
+
+The numbering of the registers in GETREG(n, v) and PUTREG(n, v) is 
+defined in the table below. The size of v determines the size of 
+the register, i.e. GETREG(0, ch), where ch is of type CHAR, reads 
+the contents of AL. If v is a constant, the register is taken to 
+be 32 bits. The function CC(n) is not implemented.
+
+Numbering of 80x86 registers
+
+n	register	n	register
+0	EAX / AX / AL	4	ESP / SP / AH
+1	ECX / CX / CL	5	EBP / BP / CH
+2	EDX / DX / DL	6	ESI / SI / DH
+3	EBX / BX / BL	7	EDI / DI / DL
+In Release 2.32 the module SYSTEM provides predefined constants 
+for reading and writing registers.
+
+32 Bit values: EAX, ABX, ECX, EDX, ESP, EBP, ESI, EDI
+16 bit values: AX, BX, CX, DX, SP, BP, SI, DI
+8 bit values: AL, BL, CL, DL or AH, BH, CH, DH
+
+e.g.: VAR l: LONGINT; i: INTEGER; s: SHORTINT;
+	SYSTEM.GETREG(SYSTEM.EAX, l);
+	SYSTEM.GETREG(SYSTEM.AX, i);
+	SYSTEM.GETREG(SYSTEM.AL, s);
+
+6.2 Code Procedures
+
+The compiler allows for inline expanded "assembly" procedures. The 
+syntax for code procedures is
+
+	IMPORT SYSTEM;
+
+	PROCEDURE "-" ident [FormalPars] [ byte { "," byte } ] ";"
+
+When the compiler translates a call to a code procedure, the 
+parameters are evaluated and pushed onto the stack (from right to 
+left). The first parameter in the parameter list (being the last 
+parameter pushed onto the stack) can be addressed with 0[ESP]. All 
+parameters with sizes of 4 bytes or less are pushed onto the stack 
+as 32-bit values, regardless of the size of their Oberon type. So 
+the second such parameter can be addressed with [ESP+4], the third 
+with [ESP+8], etc. The bytes specified are then inlined, and 
+finally the stack pointer is reset. Code procedures must not be 
+exported.
+
+Examples: see Win32.Math.Mod
+
+6.3  Inline Assembler (prk)
+
+Integration in Oberon / Use of the assembler
+
+The integration of assembler code is done at the procedure level. 
+To write an assembler procedure you just have to write the normal 
+Oberon procedure header, declare constants, types and variables 
+and start the code with the CODE keyword, followed by the target 
+machine you're programming.
+
+Example:
+	PROCEDURE Swap(VAR x, y: LONGINT);  
+		CODE {SYSTEM.i386} 
+		MOV	EAX,	x[EBP]	; load x address  
+		MOV	EBX,	DWORD 0[EAX]	; load x value  
+		MOV	ECX,	y[EBP]	; load y address  
+		MOV	EDX,	DWORD 0[ECX]	; load y value  
+		MOV	DWORD 0[EAX],	EDX  
+		MOV	DWORD 0[ECX],	EBX  
+	END Swap;
+
+The assembler accepts two kinds of comments: the normal Oberon 
+comment (* ... *) and the standard assembler comments starting 
+with ";" and ending at the end of the same line. 
+
+Targets
+
+The assembler will let you use only the instructions defined in 
+the target you're explicitly programming. The following 
+architectures are known to the assembler: 
+
+	* SYSTEM.i386
+	* SYSTEM.i486
+	* SYSTEM.Pentium
+	* SYSTEM.PentiumPro
+	* SYSTEM.FPU
+
+Besides the architecture, some instructions or registers can be 
+used only in restricted conditions: 
+
+	* SYSTEM.Privileged, instructions or registers that can be 
+only used while on level 0 (kernel mode) 
+
+Labels
+
+To define a label write the name followed by a colon. To use it 
+write the name without colon.
+
+Example:
+	PROCEDURE Loop();  
+		CODE {SYSTEM.i386} 
+	lab1:
+		JMP	lab1
+	END Loop;
+
+Use of Oberon variables and constants
+
+The assembler allows you to use the variables and constants 
+defined in Oberon. You should be really carefull when doing this, 
+because no type check can be done. The variables can be divided in 
+three groups: globals, local or parameters, var parameters. The 
+global variables are accessed through their address with an 
+absolute memory access. The local variables and the parameters are 
+accessed on the stack. Important: the local variables and the 
+parameters have to be in the same scope of the procedure. No 
+static link access is done here!
+
+Example:
+	VAR
+		GlobalLInt: LONGINT;
+		GlobalPointer: POINTER TO RECORD x: LONGINT END;
+
+	PROCEDURE P(CharPar: CHAR; VAR IntVarPar: INTEGER);
+		VAR LocalInt: INTEGER;
+		CODE {SYSTEM.i386}
+		MOV	EAX,	GlobalLInt	; value of GlobalLInt loaded 
+into EAX
+		MOV	EAX,	GlobalPointer	; address of 
+GlobalPointer loaded into EAX
+		MOV	EBX,	0[EAX]	; value pointed from 
+GlobalPointer loaded into EBX
+		MOV	BX,	LocalInt[ESP]	; value of LocalInt 
+loaded into BX
+		MOV	CL,	CharPar[ESP]	; load value of 
+ParamChar into CL
+		MOV	EAX,	IntVarPar[ESP] 	; load address of the 
+value parameter IntVarPar
+		MOV	DX,	0[EAX]	; load value of IntVarPar
+		INC	DX
+		MOV	0[EAX],	DX	; IntVarPar := IntVarPar + 1
+	END P;
+
+Type Cast
+
+The type sizes known in the assembler are BYTE, WORD, DWORD, QWORD 
+and TBYTE. They specify the size of an operand. e.g.: MOV WORD 
+12[EBP], 3
+The exact syntax of a size specifier is (BYTE | WORD | DWORD | 
+QWORD | TBYTE) [ PTR ]. Note that PTR is optional. This specifier 
+can override a variable size. 
+
+Value definitions
+
+The assembler allows you to define values with the DB, DW and DD 
+commands. This can be helpful to insert data in the program or to 
+implement instructions that aren't (now) implemented. 
+e.g.: DB 00H, 0F0H, 0CBH, 12H
+
+6.4  Interfacing to non-Oberon Libraries
+
+This section describes some extensions made to the Windows Oberon 
+Compiler to support direct calls to and from non-Oberon 
+procedures. The sysflag (OP2) notation is used to mark system 
+specific calling and parameter passing conventions. Using sysflags 
+requires the import of module SYSTEM, since this extensions are 
+specific to Windows Oberon. 
+
+On Oberon for Windows the following calling conventions are 
+required:
+
+	parameter passing	stack cleanup	callee saved registers
+
+(Windows) Oberon	right to left	callee	ESP, EBP
+
+stdcall	right to left	callee	ESP, EBP, EBX, ESI, EDI
+
+cdecl	right to left	caller	EBP, EBX, ESI, EDI
+
+
+Non-Oberon procedures are marked using the "stdcall" or "cdecl" 
+sysflag:
+
+	PROCEDURE [ "[" ( "stdcall" | "cdecl" ) "]" ] ...
+
+This applies to procedure type declarations as well as to 
+procedure implementations. Procedures with different calling 
+conventions are not assignment compatible.
+
+In the following table C and Oberon types are compared with each 
+other: Mapping of basic data types does not present a problem, 
+because all have the same word size both in Oberon and in C. In 
+Oberon, all numeric types are signed. The type CHAR is unsigned. 
+These definitions are mapped to C-types, as shown in the table.
+
+Oberon to C		C to Oberon
+
+CHAR	unsigned char	unsigned char	CHAR
+SHORTINT	signed char	char, signed char	SHORTINT
+INTEGER	signed short int	short, short int, signed short int, 
+WORD	INTEGER
+LONGINT	signed long int	long, long int, signed long int, 
+DWORD	LONGINT
+SET	unsigned long int	DWORD	SET
+REAL	float	float	REAL
+LONGREAL	double	double	LONGREAL
+
+
+Open arrays as formal parameters carry an array descriptor and are 
+therefore not compatible with C. Fixed arrays are compatible. In 
+Oberon, pointers to records carry type information (a pointer to a 
+type tag), while pointers in C are only addresses and thus 
+correspond to an Oberon LONGINT. Records as value parameters are 
+copied to the stack by the callee and are therefore not compatible 
+with C. Reference parameter records carry an additional type tag 
+and are therefore not compatible with C. To pass open arrays and 
+reference parameter records in a C compatible way, their types 
+have to be marked with the "notag" sysflag. 
+
+	RECORD [ "[" "notag" "]" ] ...
+	ARRAY [ "[" "notag" "]" ] ...
+
+To maintain type-safety different restrictions apply to types 
+marked as "notag":
+
+"notag" record types may only be used if the type tag is not used, 
+thus the compiler does not support any type tests or guards on 
+such records (IS, WITH, (Type)). To maintain type-safety the 
+dynamic type of a "notag" record must always be the same as the 
+static type, thus "notag" record types may not be extended nor can 
+they be an extension.
+
+"notag" open array types may only be used if the hidden array 
+descriptor is not accessed directly (LEN) or indirectly (index 
+checks, COPY, ...). Thus "notag" open arrays can only be used to 
+define procedure types and variables but can not be used as 
+parameters by procedures implemented in Oberon.
+
+When importing module SYSTEM, NIL may be passed for any reference 
+parameter. For structured (ARRAY or RECORD) value parameters 
+marked as "notag" NIL may be passed as parameter value too. This 
+feature is specially usefull when calling some Windows APIs. 
+Oberon does not yet have a feature to check if a non-pointer 
+parameter is NIL.
+
+When importing module SYSTEM the return value of functions may be 
+ignored. This is specially usefull when calling Windows APIs.
+
+6.5 Calling the Windows API and DLL Functions
+
+A call to a Windows API or DLL function from Oberon is done by 
+declaring a procedure variable for each function to call and 
+initialising it with the address of the respective API function. 
+The address is determined by calling the procedure 
+Kernel32.GetProcAddress. For most Windows API functions accepting 
+string parameters there actually exist two versions, one that 
+accepts Unicode (string) parameters and one that accepts ASCII 
+(string) parameters. The latter have an "A" appended to their 
+name. E.g. to call "MessageBox" from Oberon use "MessageBoxA" as 
+function name when calling Kernel32.GetProcAddress. The following 
+example shows excerpts from typical DLL interface modules:
+
+	MODULE User32;
+		IMPORT SYSTEM, Kernel32;
+
+		CONST
+			MBOk* = {}; MBIconExclamation* = {4, 5};
+			HWNDDesktop* = Kernel32.NULL;
+
+		TYPE
+			HWND* = LONGINT;
+
+		VAR
+			MessageBox-: PROCEDURE [stdcall] (hwnd: HWND; 
+text, caption: ARRAY [notag] OF CHAR; type: SET): LONGINT;
+
+		PROCEDURE InitAPI();
+			VAR mod: Kernel32.HMODULE;
+		BEGIN
+			mod := Kernel32.LoadLibrary("User32.DLL");
+			Kernel32.GetProcAddress(mod, "MessageBoxA", 
+SYSTEM.VAL(LONGINT, MessageBox))
+		END InitAPI;
+
+	BEGIN
+		InitAPI()
+	END User32.
+
+
+	MODULE OLE32;
+		IMPORT SYSTEM, Kernel32;
+
+		TYPE
+			GUID* = RECORD [notag]
+							data1: LONGINT;
+							data2, data3: INTEGER;
+							data4: ARRAY 8 OF CHAR
+						END;
+			HRESULT* = LONGINT;
+
+		VAR
+			CoCreateGuid-: PROCEDURE [stdcall] (VAR guid: 
+GUID): HRESULT;
+
+		PROCEDURE Succeeded*(status: HRESULT): BOOLEAN;
+		BEGIN
+			RETURN status >= 0
+		END Succeeded;
+
+		PROCEDURE InitAPI();
+    VAR mod: Kernel32.HMODULE;
+		BEGIN
+			mod := Kernel32.LoadLibrary("OLE32.DLL");
+			Kernel32.GetProcAddress(mod, "CoCreateGuid", 
+SYSTEM.VAL(LONGINT, CoCreateGuid))
+		END InitAPI;
+	BEGIN
+		InitAPI()
+	END OLE32.
+
+A client of such a interface module can call the functions 
+exported like any other exported function in Oberon.
+
+	MODULE OLE32Test;
+		IMPORT User32, OLE32;
+
+		PROCEDURE Do*;
+			VAR guid: OLE32.GUID; res: OLE32.HRESULT;
+		BEGIN
+			res := OLE32.CoCreateGuid(guid);
+			IF ~OLE32.Succeeded(res) THEN
+				User32.MessageBox(User32.HWNDDesktop, 
+"OLE32.CoCreateGuid failed", "OLE32 Error", 
+					User32.MBOk + 
+User32.MBIconExclamation)
+			END
+		END Do;
+
+	END OLE32Test.
+
+6.6 Building EXE and DLL Executable Files with Oberon
+
+Oberon uses it's own proprietary object file format. To boot 
+Oberon on Windows a tool is required to build a valid Windows 
+executable (portable executable = PE) file which is able to load a 
+minimal Oberon system. This tool (called PELinker) works by 
+emulating an Oberon system. After loading all modules (into the 
+emulator) required by the Oberon module loader, the emulator heap 
+(pseudo heap) is used to build the ".text" section of the PE file. 
+To make the ".text" section executable a small stub is generated 
+which initializes global variables and executes the body of the 
+Kernel module. DLL imports and exports are resolved by the Windows 
+PE loader. Fixups required when the ".text" section can not be 
+loaded at its prefered address are also done by the Windows PE 
+loader.
+
+To take advantage of the Oberon system features GC and IMPORT you 
+must include all the inner-core modules in your PE project. The 
+inner-core modules are: Kernel32, Kernel, ADVAPI32, Registry, 
+Console, FileDir, Files, Modules. For module Registry to work 
+correctly you must include "FileDescription" and "FileVersion" in 
+the version resource section. For more details see the example 
+HelloCon.Mod included in the "Developer" package (see 
+Packages.Tool).
+
+The command PELinker.Link is used to link Oberon modules into a PE 
+file. This command takes as single parameter the name of a linker 
+input file similar to the module definition files used by the 
+Visual C++ linker. The following commands are supported by the 
+PELinker: (see also PELinker.Tool)
+
+PROGRAM name
+
+Required to build an EXE file. The resulting EXE file's name is 
+name.EXE .
+
+
+LIBRARY name
+
+Required to build an DLL file. The resulting DLL file's name is 
+name.DLL .
+
+
+SUBSYSTEM ( "GUI" | "CUI" | "NATIVE" )
+
+Specifies which subsystem is required to load a PE file. The 
+following subsystems are supported by the linker:
+	GUI	Win32 graphical application
+	CUI	Win32 console application
+	NATIVE	driver or service DLL
+
+
+IMGVERSION major "." minor
+
+The version number in the EXE or DLL file header.
+
+
+HEAPSIZE bytes
+
+Specifies the size of the process heap in a EXE file. The Oberon 
+kernel allocates the heap at run-time, thus this setting does not 
+affect the Oberon heap. On Windows NT this size can be set to 0 on 
+Windows 9x however some APIs require a small (64 kByte) process 
+heap to work correctly. This option is not needed when linking a 
+DLL file.
+
+
+STACKSIZE bytes
+
+Specifies the upper limit of the stack size. The default value is 
+1 MB.
+
+
+MODULES module { "," module }
+
+List of all the modules to be included in the executable file. 
+This list must always include all the inner-core modules: 
+Kernel32, Kernel, ADVAPI32, Registry, Console, FileDir, Files, 
+Modules.
+
+
+IMPORTS import { "," import }
+
+A list of DLL imports which are resolved by the Windows loader.
+Syntax of import:
+	import = dllimport | imgstate .
+	dllimport = module "." global-procvar "=" dll-name "." dll-
+entry [ ":" ( "DLL" | "SYS" ) ] .
+	imgstate = module "." global-lintvar "=" ( "HeapAdr" | 
+"HeapSize" | "Modules" | "hInstance" ) .
+
+
+EXPORTS export { "," export }
+
+A list of exported Oberon procedures to be exported from a DLL or 
+EXE file.
+Syntax of export:
+	export = dll-entry "=" module "." procedure .
+Note: exported procedures should use the API (stdcall) calling 
+convention.
+
+
+ICONS icon { "," icon }
+
+A list of icon (.ico) files to be included as resources.
+Syntax of icon:
+	icon = resource-name "=" ico-file .
+
+The first icon resource is used as default icon for the executable 
+file.
+
+
+CURSORS cursor { "," cursor }
+
+A list of cursor (.cur) files to be included as resources.
+Syntax of cursor:
+	cursor = resource-name "=" cur-file .
+
+
+VERSION version { "," version }
+
+A list of name/value pairs to be included in the version resource. 
+The version information of an executable file is shown in the 
+"Version" page of the files "Properties" dialog. 
+
+Syntax of version:
+	version = name "=" value .
+
+The module Registry requires the entries "FileDescription" and 
+"FileVersion" to be set.
+
+
+PELinker Example: Hello
+
+This example shows how to build an EXE file which includes the 
+Oberon inner-core.
+
+The module:
+
+	MODULE HelloCon;
+		IMPORT Console;
+	
+		PROCEDURE Do*;
+		BEGIN
+			Console.Str("Hello from Oberon!"); Console.Ln()
+		END Do;
+	
+	END HelloCon.
+
+Compiler.Compile \Ns HelloCon.Mod ~
+
+The Link file:
+
+	PROGRAM Hello
+	SUBSYSTEM CUI
+	IMGVERSION 2.32
+	HEAPSIZE 010000H
+	MODULES
+		Kernel32, Kernel, ADVAPI32, Registry, Console, 
+FileDir, Files, Modules, HelloCon
+	IMPORTS
+		Kernel.heapAdr = HeapAdr,
+		Kernel.heapSize = HeapSize,
+		Kernel.modules = Modules,
+		Kernel.hInstance = hInstance,
+		Kernel32.AllocConsole = KERNEL32.AllocConsole,
+		...
+	ICONS
+		Oberon = Oberon.ico
+	VERSION
+		CompanyName = "Institute for Computer Systems of ETH 
+Zürich",
+		FileDescription = "Oberon Hello",
+		FileVersion = "Release 2.32",
+		LegalCopyright = "(c) 1996, 1997, 1998, 1999 Team of 
+the Institute for Computer Systems of ETH Zürich",
+		LegalTrademarks = '"Oberon" and "Gadgets" are 
+trademarks of Eidgenössische Technische Hochschule, Zürich 
+(ETHZ)',
+		OriginalFilename = "Hello.EXE"
+
+PELinker.Link HelloCon.Link ~
+
+The reg file:
+
+	REGEDIT4
+
+	[HKEY_CURRENT_USER\Software\Oberon Hello\Release 
+2.32\System]
+	"Console"="StdOut"
+
+RegistryTools.Load \S "Oberon Hello" \V "Release 0.1" HelloCon.Reg 
+~
+
+6.7  Zero-Overhead Exception Handling
+
+The exception handling technique implemented is based on 
+metaprogramming (see: "http://www.ssw.uni-
+linz.ac.at/Research/Papers/Hof97b.html"). It needs no special 
+language constructs and does not require compiler support. Error 
+free programs are not slowed down. Overhead occurs only in the 
+case of exceptions.
+
+Exceptions are objects of an exception class, which is a subclass 
+of Exception (see: Exceptions.Def). There are system exceptions 
+(SysException) and user exceptions (UserException). System 
+exceptions (e.g. access violation) are triggered automatically 
+while user exceptions are raised by the library call 
+Exceptions.Raise(exception).
+
+Exceptions are caught by an exception handler which is an ordinary 
+procedure H with the following characteristics:
+
+H is declared local to a procedure P in the call-stack of the 
+failing procedure.
+H has a single reference parameter of type E, which is the type of 
+the exception to be caught or a superclass thereof. The return 
+type of H is LONGINT. Valid values for H are:
+
+	Ignore	Ignore the exception and continue execution. 
+Only valid for user exceptions.
+	Forward	Continue searching an exception handler in the 
+caller of P.
+	Abort	Abort execution, display a trap viewer.
+	ReturnFail(context)	Return to the procedure that called 
+Failed(context) and return TRUE.
+
+	TYPE
+	  MyException = RECORD (Exceptions.UserException) END;
+	
+	  PROCEDURE P();
+	    VAR e: MyException;
+	    PROCEDURE Handler(VAR e: Exceptions.Exception): LONGINT;
+	    BEGIN
+	      IF e IS MyException THEN
+	        ...
+	        RETURN Exceptions.Ignore / Forward / Abort
+	      ELSE
+	        RETURN Exceptions.Abort / Forward
+	      END
+	    END Handler;
+	  BEGIN
+	    ...
+	    Exceptions.Raise(e)
+	    ...
+
+This method is limited, since an exception will always result in a 
+Abort or Ignore. This is ok if you want to do some cleanups of a 
+global state in your exception handler. For more advanced 
+exception handling a none-zero-overhead "goto" mechanism is 
+provided.
+
+	TYPE
+	  MyException = RECORD (Exceptions.UserException) END;
+	
+	  PROCEDURE P();
+	    VAR e: MyException; context: Context;
+	    PROCEDURE Handler(VAR e: Exceptions.Exception): LONGINT;
+	    BEGIN
+	      IF e IS MyException THEN
+	        ...
+	        RETURN Exceptions.ReturnFail(context)
+	      ELSE
+	        RETURN Exceptions.Abort / Forward
+	      END
+	    END Handler;
+	  BEGIN
+	    IF ~Exceptions.Failed(context) THEN (* no error occured 
+*)
+  	    ...
+  	    Exceptions.Raise(e)
+  	    ...
+	    ELSE (* error occured and Exceptions.ReturnFail was 
+called *)
+  	    ...	   
+	    END
+
+Using Exceptions.Fail, this mechanism can also be without a 
+exception handler.
+
+	  PROCEDURE P();
+	    VAR context: Context;
+	  BEGIN
+	    IF ~Exceptions.Failed(context) THEN (* no error occured 
+*)
+  	    ...
+  	    Exceptions.Fail(context)
+  	    ...
+	    ELSE (* Exceptions.Fail was called *)
+  	    ...	   
+	    END
+
+Calling Exceptions.Fail(context) or Exceptions.ReturnFail(context) 
+will result in a trap if Exceptions.Failed was not called within 
+the call-stack of the failing procedure.
+
+ejz November 29, 1999

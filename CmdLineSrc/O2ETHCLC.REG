@@ -1,0 +1,4 @@
+REGEDIT4
+
+[HKEY_CURRENT_USER\Software\ETH PlugIn Oberon Compiler & Linker\Release 2.4\System]
+"Console"="StdOut"
