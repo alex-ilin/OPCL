@@ -1,0 +1,320 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title> The Module SYSTEM</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+<body BGCOLOR="#FFFFFF">
+<center><h1>The Module SYSTEM</h1></center>
+<p>
+The module SYSTEM contains definitions that are necessary to program <i>low-level</i> operations referring directly to resources particular to a given computer and/or implementation. These include, for example, facilities for accessing devices that are controlled by the computer, and facilities to override the data type compatibility rules otherwise imposed by the language definition. The functions and procedures exported by this module expose the complete memory, and allow unsafe type-casts to be made. They should be used with care, because if misused they can easily crash the whole system. It is a bit like programming in C. It is recommended to restrict their use to specific <i>low-level</i> modules. Such modules are inherently non-portable, but easily recognized due to the identifier SYSTEM appearing in their import list. A good programming practice is to move all the functions using SYSTEM to a single module and to endeavour to produce a single non-portable module per package.
+<p>
+The subsequent definitions are applicable to the ETH Oberon for which SYSTEM is implemented directly in the compiler. The procedures are compiled as in-line code.
+<p>
+If a module source text contains assembler code, the module SYSTEM must be imported to invoke the <a href="http://www.oberon.ethz.ch/native/compiler/">built-in assembler</a>. It is not permitted to import SYSTEM when creating portable binaries in Oberon for Windows or MacOberon.
+<p>
+Get some inspiration from the nicely written and informative documentation on the <a href="http://www.cs.sun.ac.za/courses/pregrad/rw252/op2_asm.html">assembler</a> used to teach a course in low-level programming by Jacques Egloff.
+<p>
+The majority of the procedures were first defined in the book "Programming in Oberon" by Reiser and Wirth, in the SYSTEM section of the <a href="http://www.oberon.ethz.ch/oreport.html#SYSTEM">Oberon Language Report</a>. A few others are new. They should be available on most Oberon implementations. CC defined in the book, is not present in ETH Oberon. Individual implementations may include definitions that are particular to the specific, underlying computer, as is the case for Native Oberon.
+<p>
+<h3>Types</h3> 
+BYTE, a placeholder that can only be allocated and assigned. No other operation is defined on it. No representation of values is specified. Instead, certain compatibility rules with other types are given: 
+<OL> 
+<LI>a CHAR or a SHORTINT expression may be assigned to a BYTE variable. To convert BYTE to another type, use ORD or SYSTEM.VAL. 
+<LI>If a formal parameter is of type ARRAY OF BYTE, then the corresponding actual parameter may be of any non-pointer type. 
+</OL>
+<p>
+PTR, compatible with any pointer type. It can be used in a type guard or type test. PTR and SYSTEM.PTR are equivalent.
+<p>
+<h3>Constants (PC only)</h3> 
+For the use with SYSTEM.GETREG and SYSTEM.PUTREG, the following integer constants are defined:
+<p>
+&nbsp; &nbsp; EAX = 8; ECX = 9; EDX = 10; EBX = 11; 
+<br>&nbsp; &nbsp; ESP = 12; EBP = 13; ESI = 14; EDI = 15; 
+<br>&nbsp; &nbsp; AX = 16; CX = 17; DX = 18; BX = 19; 
+<br>&nbsp; &nbsp; SP = 20; BP = 21; SI = 22; DI = 23; 
+<br>&nbsp; &nbsp; AL = 24; CL = 25; DL = 26; BL = 27; 
+<br>&nbsp; &nbsp; AH = 28; CH = 29; DH = 30; BH = 31;
+<p>
+<h4>Legend of the symbol used as formal parameters</h4>
+<ul>
+<li> "adr", "src", "dst" - memory or I/O address
+<li> "n" - bit number, number of bits or bytes, trap number
+<li> "r" - register
+<li> "v" - variable, field or parameter
+<li> "x" - expression
+<li> "T" - type
+</ul>
+<h4>Legend of the types</h4>
+<ul>
+<li> Address = LONGINT, PTR
+<li> RegNum = LONGINT
+<li> BuiltIn = IntValue, Float, BOOLEAN, PTR, PROCEDURE
+<li> IntValue = BYTE, CHAR, LONGINT, SET
+<li> Float = REAL, LONGREAL
+</ul>
+<h3>Function procedures</h3>
+<p>
+(* Return the address of the specified variable, parameter or record field. *) 
+<br>PROCEDURE <strong>ADR</strong> (VAR v: Any): LONGINT;
+<p>
+<strong>Remark:</strong> Be cautious when using a pointer type! The pointer value is not always the same as the data element's address, as shown in this example:
+<p>
+&nbsp; &nbsp; VAR p: POINTER TO ARRAY OF x; 
+<br>&nbsp; &nbsp; SYSTEM.VAL(LONGINT, p) # SYSTEM.ADR(p[0])
+<p>
+(* Test bit "n" at the specified address. *) 
+<br>PROCEDURE <strong>BIT</strong> (adr: Address; n: LONGINT): BOOLEAN;
+<p>
+(* Read an 8-bit value from the specified memory address. *) 
+<br>PROCEDURE <strong>GET8</strong> (adr: Address): SHORTINT;
+<p>
+(* Read a 16-bit value from the specified memory address. *) 
+<br>PROCEDURE <strong>GET16</strong> (adr: Address): INTEGER;
+<p>
+(* Read a 32-bit value from the specified memory address. *) 
+<br>PROCEDURE <strong>GET32</strong> (adr: Address): LONGINT;
+<p>
+(* Return value "x", shifted left "n" bits (may be negative, to shift right). *) 
+<br>PROCEDURE <strong>LSH</strong> (x: IntValue; n: LONGINT): TypeOfX;
+<p>
+(* Return value "x", rotated left "n" bits (may be negative, to rotate right). *) 
+<br>PROCEDURE <strong>ROT</strong> (x: IntValue; n: LONGINT): TypeOfX;
+<p>
+(* Type cast. Return the value of "x" interpreted as of type "T", with no conversion. *) 
+<br>PROCEDURE <strong>VAL</strong> (T: AlmostAnyTypeName; x: Any): TypeT;
+<p>
+SYSTEM.VAL(LONGINT, {0}) is 1, and SYSTEM.VAL(SET, 1) is {0}. Other Oberon compilers (e.g. PowerPC) may behave differently.
+<p>
+<strong>Remark:</strong> A warning is issued if the compiler option \w is used.
+<p>
+<h3>Proper procedures</h3>
+<p>
+(* Read value "v" from the specified memory address. The size of "v" must be 8-, 16- or 32-bits. *) 
+<br>PROCEDURE <strong>GET</strong> (adr: Address; VAR v: BuiltIn);
+<p>
+(* Copy "n" bytes from address "src" to address "dst". 
+<br>&nbsp; &nbsp; Behaviour for overlapping source and destination is not defined. *) 
+<br>PROCEDURE <strong>MOVE</strong> (src, dst: Address; n: LONGINT);
+<p>
+(* Allocate an untraced block of memory of "n" bytes. *) 
+<br>PROCEDURE <strong>NEW</strong> (VAR v: PTR; n: LONGINT);
+<p>
+(* Write the value of "x" to the specified memory address. The size of "x" must be 8-, 16- or 32-bits. *) 
+<br>PROCEDURE <strong>PUT</strong> (adr: Address; x: BuiltIn);
+<p>
+(* Write the lower 8 bits of "x" to the specified memory address. *) 
+<br>PROCEDURE <strong>PUT8</strong> (adr: Address; x: LONGINT);
+<p>
+(* Write the lower 16 bits of "x" to the specified memory address. *) 
+<br>PROCEDURE <strong>PUT16</strong> (adr: Address; x: LONGINT);
+<p>
+(* Write 32 bits of "x" to the specified memory address. *) 
+<br>PROCEDURE <strong>PUT32</strong> (adr: Address; x: LONGINT);
+<p>
+(* Assign the value of the specified register to "v". Note that in some cases 
+<br>&nbsp; &nbsp; the dereferencing of "v" may cause other registers to be overwritten. *) 
+<br>PROCEDURE <strong>GETREG</strong> (r: RegNum; VAR v: BuiltIn);
+<p>
+(* Assign the specified value to the specified register. Note that the evaluation 
+<br>&nbsp; &nbsp; of "x" may also change other registers. *) 
+<br>PROCEDURE <strong>PUTREG</strong> (r: RegNum; x: BuiltIn);
+<p>
+<h3>Proper procedures specific to ETH Oberon Native</h3>
+<p>
+(* Perform a port input instruction at the specified I/O address. 
+<br>&nbsp; &nbsp; The size of "v" must be 8-, 16- or 32-bits. *) 
+<br>PROCEDURE <strong>PORTIN</strong> (adr: LONGINT; VAR v: BuiltIn);
+<p>
+(* Perform a port output instruction at the specified I/O address. 
+<br>&nbsp; &nbsp; The size of "x" must be 8-, 16- or 32-bits. *) 
+<br>PROCEDURE <strong>PORTOUT</strong> (adr: LONGINT; x: BuiltIn);
+<p>
+(* Disable interrupts on the current processor. *) 
+<br>PROCEDURE <strong>CLI</strong> ();
+<p>
+(* Enable interrupts on the current processor. *) 
+<br>PROCEDURE <strong>STI</strong> ();
+<p>
+(* Halt execution with a TRAP. "n" is an arbitrary integer displayed in the trap viewer. 
+<br>&nbsp; &nbsp; Trap numbers in the range -39..27 are pre-defined, and an appropriate message is displayed <br>&nbsp; &nbsp; by the trap handler in the System module. The value MAX(INTEGER) is interpreted specially, <br>&nbsp; &nbsp; for debugging. A trap viewer is displayed, but execution continues after the HALT. *) 
+<br>PROCEDURE <strong>HALT</strong> (n: LONGINT);
+<p>
+<h3>Use of type casting in low-level code</h3>
+<p>
+In low-level code, to be sure of the size where the size of the argument must be 8-, 16- or 32-bits, use SYSTEM.VAL to cast it. Examples:
+<p>
+To obtain an 8-bit value scr from a port or memory, write:
+<ul>
+<li> SYSTEM.PORTIN(adr, SYSTEM.VAL(CHAR, scr));
+<li> SYSTEM.GET(adr, SYSTEM.VAL(CHAR, scr));
+</ul>
+To send a 16-bit value scr to a port or memory, write:
+<ul>
+<li> SYSTEM.PORTOUT(adr, SYSTEM.VAL(INTEGER, scr));
+<li> SYSTEM.PUT(adr, SYSTEM.VAL(INTEGER, scr));
+</ul>
+Alternatively, you could use CHR(x):
+<ul>
+<li> SYSTEM.PUT(adr, CHR(255)) or
+<li> SYSTEM.PUT(adr, 0FFX)
+</ul>
+<h3>Example low-level code skeleton program</h3>
+<pre>MODULE LowlevelProg; 
+IMPORT SYSTEM; 
+<br> 
+VAR value: LONGINT; scr: CHAR; scr2: SET; 
+<br> 
+PROCEDURE Get*;  (* Get an 8-bit value - 4 alternatives *) 
+<br> 
+BEGIN 
+   scr := CHR(SYSTEM.GET8(SYSTEM.ADR(value));  (* from memory *) 
+   SYSTEM.GET(SYSTEM.ADR(value), SYSTEM.VAL(CHAR, scr));  (* from memory *) 
+   SYSTEM.GETREG(SYSTEM.AL, SYSTEM.VAL(CHAR, scr));  (* from a register *) 
+   (* from a port - Native Oberon only 
+   SYSTEM.PORTIN(3F8H, SYSTEM.VAL(CHAR, scr));&nbsp; &nbsp; &nbsp;*) 
+END Get; 
+<br> 
+PROCEDURE Testbit*; (* Test the presence of a specific bit in scr *) 
+<br> 
+BEGIN 
+   IF SYSTEM.BIT(SYSTEM.ADR(scr), 6) THEN END;  (* first approach *)
+   IF 6 IN SYSTEM.VAL(SET, scr) THEN END;  (* better approach *) 
+<br> 
+   (* or even better, declare scr2 as a SET to starts with *)
+   SYSTEM.GET(SYSTEM.ADR(value), SYSTEM.VAL(SET, scr2));  (* from memory *) 
+   IF 6 IN scr2 THEN END;
+END Testbit; 
+<br> 
+END LowlevelProg.
+</pre>
+<h3>How to write low-level code in "portable" Oberon</h3>
+<p>
+As implied by the previous description, to be "portable" a module may not import SYSTEM. We want to make it clear that also then it is perfectly possible to write low-level code.
+<p>
+<strong>Example:</strong> Generating an ARP request packet.
+<p>
+The following code is extracted from an actual IP protocol implementation. The example procedure ARPRequest generates and sends an ARP request packet. Because this is not time-critical, the procedure is written in a safe and portable way, without using the SYSTEM module. We also show all the support definitions for the ARPRequest procedure, to make a compilable example.
+<p>
+Time-critical parts of the protocol stack (not shown) use inline SYSTEM.PUT, SYSTEM.GET, SYSTEM.MOVE and SYSTEM.VAL calls for more efficient code. In this case, index checking is done with explicit ASSERT statements.
+<p>
+Note that we do not define excess constants that clutter the code. For example, the packet field offsets are not declared as constants, because they are sufficiently documented in the comment preceding the ARPRequest procedure.
+<p>
+We also do not depend on the compiler arranging record fields in any order or alignment. We only assume that type CHAR is 8 bits, and that arrays of this type are packed.
+<p>
+The PutNet2, PutNet4, GetNet2, GetNet4 and Copy procedures can be re-used straight from the example.
+<pre>MODULE TempExample; 
+<br> 
+CONST 
+  EtherTypeIP = 800H; 
+  EtherTypeARP = 806H; 
+<br> 
+  MaxLinkAdrSize = 8; 
+  EtherAdrSize = 6; 
+<br> 
+TYPE 
+  IPAdr = LONGINT; 
+  LinkAdr = ARRAY MaxLinkAdrSize OF CHAR; 
+<br> 
+  LinkDevice = POINTER TO LinkDeviceDesc; 
+  LinkDeviceDesc = RECORD 
+    local, broadcast: LinkAdr; 
+    send: PROCEDURE (dev: LinkDevice; dst: LinkAdr; type: LONGINT; 
+      VAR hdr, data: ARRAY OF CHAR; hlen, ofs, len: LONGINT); 
+  END; 
+<br> 
+VAR 
+  nilLinkAdr: LinkAdr; 
+  localAdr: IPAdr; 
+<br> 
+(** Put a 16-bit host value into buf[ofs..ofs+1] in network byte order. *) 
+<br> 
+PROCEDURE PutNet2*(VAR buf: ARRAY OF CHAR; ofs, val: LONGINT); 
+BEGIN 
+  buf[ofs] := CHR(val DIV 100H MOD 100H); 
+  buf[ofs+1] := CHR(val MOD 100H) 
+END PutNet2; 
+<br> 
+(** Put a 32-bit host value into buf[ofs..ofs+3] in network byte order. *) 
+<br> 
+PROCEDURE PutNet4*(VAR buf: ARRAY OF CHAR; ofs, val: LONGINT); 
+BEGIN 
+  buf[ofs] := CHR(val DIV 1000000H MOD 100H); 
+  buf[ofs+1] := CHR(val DIV 10000H MOD 100H); 
+  buf[ofs+2] := CHR(val DIV 100H MOD 100H); 
+  buf[ofs+3] := CHR(val MOD 100H) 
+END PutNet4; 
+<br> 
+(** Get a 16-bit network value from buf[ofs..ofs+1] in host byte order. *) 
+<br> 
+PROCEDURE GetNet2*(VAR buf: ARRAY OF CHAR; ofs: LONGINT): LONGINT; 
+BEGIN 
+  RETURN LONG(ORD(buf[ofs]))*100H + LONG(ORD(buf[ofs+1])) 
+END GetNet2; 
+<br> 
+(** Get a 32-bit network value from buf[ofs..ofs+3] in host byte order. *) 
+<br> 
+PROCEDURE GetNet4*(VAR buf: ARRAY OF CHAR; ofs: LONGINT): LONGINT; 
+BEGIN 
+  RETURN LONG(ORD(buf[ofs]))*1000000H + LONG(ORD(buf[ofs+1]))*10000H + 
+    LONG(ORD(buf[ofs+2]))*100H + LONG(ORD(buf[ofs+3])) 
+END GetNet4; 
+<br> 
+(** Copy from[fofs..fofs+len-1] to to[tofs+len-1] (no overlap). *) 
+<br> 
+PROCEDURE Copy*(VAR from, to: ARRAY OF CHAR; fofs, tofs, len: LONGINT); 
+BEGIN 
+  WHILE len > 0 DO 
+    to[tofs] := from[fofs]; INC(tofs); INC(fofs); 
+    DEC(len) 
+  END 
+END Copy; 
+<br> 
+(* 
+Generate and send an ARP request packet for the specified IP address. 
+An ARP packet for Ethernet and IP is defined as follows in RFC 826: 
+<br> 
+ ofs size description 
+<br> 
+  00  02  hardware type = 1 (Ethernet) 
+  02  02  protocol type = 800H (ip) 
+  04  01  hardware length = 6 
+  05  01  protocol length = 4 
+  06  02  operation = 1 (request) or operation = 2 (reply) 
+  08  06  sender ethernet address 
+  14  04  sender ip address 
+  18  06  target ethernet address 
+  24  04  target ip address 
+  28  --  end of packet
+*) 
+<br> 
+PROCEDURE <strong>ARPRequest</strong>(dev: LinkDevice; ip: IPAdr); 
+VAR arp: ARRAY 28 OF CHAR; 
+BEGIN 
+  PutNet2(arp, 0, 1);  (* Ethernet *) 
+  PutNet2(arp, 2, EtherTypeIP);  (* IP *) 
+  arp[4] := CHR(EtherAdrSize);  (* hardware address length *) 
+  arp[5] := 4X;  (* protocol address length *) 
+  PutNet2(arp, 6, 1);  (* request *) 
+  Copy(dev.local, arp, 0, 8, EtherAdrSize);  (* sender Ethernet address *) 
+  PutNet4(arp, 14, localAdr);  (* sender ip address *) 
+  Copy(nilLinkAdr, arp, 0, 18, EtherAdrSize);  (* target Ethernet address *) 
+  PutNet4(arp, 24, ip);  (* target ip address *) 
+  dev.send(dev, dev.broadcast, EtherTypeARP, arp, arp, 28, 0, 0) 
+END ARPRequest; 
+<br> 
+END TempExample.
+A more efficient version of the Copy procedure, with the same index checking security, may be implemented using SYSTEM.MOVE.
+PROCEDURE Copy*(VAR from, to: ARRAY OF CHAR; fofs, tofs, len: LONGINT); 
+BEGIN 
+  ASSERT(fofs+len <= LEN(from)); 
+  ASSERT(tofs+len <= LEN(to)); 
+  SYSTEM.MOVE(SYSTEM.ADR(from[fofs]), SYSTEM.ADR(to[tofs]), len) 
+END Copy;
+</pre>
+<address><small> 
+11 Jul 2002 - Copyright &copy; 2002 ETH Z&uuml;rich. All rights reserved.<br> 
+E-Mail: oberon-web at inf.ethz.ch<br> 
+Homepage: <a href="http://www.oberon.ethz.ch/">http://www.oberon.ethz.ch</a> 
+</small></address></body>
+</html>
