@@ -10,7 +10,6 @@ Command line wrapper and 'readme' by Eugene Shcherbatyuk
 
 Notes on usage
 
-Unpack zip files into destination directory.
 Merge o2ethclc.reg into your computer registry.
 Test the work of compiler and linker using sample programs:
 
@@ -34,15 +33,6 @@ hellog.exe
 
 e) run compiler and linker with /? switch to read breaf help information.
 
-Documentation
-
-Please read
-
-- General ETH Oberon System Source License (not included)
-- ETH Oberon Plugin for Windows User Guide (included)
-- ETH Oberon Plugin for Windows documentation (not included)
-- Source code of core files will help as well. (included)
-
 Known bugs and limitations
 
 HALT and ASSERT statements are not handled properly. They cause
@@ -51,4 +41,3 @@ some of the nessecary files in the current directory. Note, please,
 linker will report, say, 'advapi32 not found' and cause windows
 application error. That is not an error indeed. That is unhandled
 exception caused by issuing HALT command within linker code.
-
