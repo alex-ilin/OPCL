@@ -1,3 +1,4 @@
 *.Make
 *.Obj
 *.EXE
+*.DLL
