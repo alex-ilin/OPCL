@@ -1,6 +1,4 @@
 O2ETHCLC.EXE compiler executable
 O2ETHCLL.EXE linker executable
 Environ ETH Oberon Plugin files that must present in the directory where compiler and linker will reside, and two sample programs
-KernelSrc ETH Oberon Plugin source of the core files which should be linked to the user program to produce executable
 UserGuide.txt An excerpt from ETH Oberon Plugin documentation
-CmdLineSrc ETH Oberon Plugin source files that were modified to produce command line version of the compiler and linker
