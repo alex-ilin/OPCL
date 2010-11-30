@@ -994,7 +994,7 @@ called *)
   	    ...	   
 	    END
 
-Using Exceptions.Fail, this mechanism can also be without a 
+Using Exceptions.Fail, this mechanism can also be used without an 
 exception handler.
 
 	  PROCEDURE P();
