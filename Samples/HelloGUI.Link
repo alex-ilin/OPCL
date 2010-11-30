@@ -112,4 +112,4 @@ VERSION
 	FileVersion = "Release 2.4",
 	LegalCopyright = "(c) 2000 Team of the Institute for Computer Systems of ETH Zurich",
 	LegalTrademarks = '"Oberon" and "Gadgets" are trademarks of Eidgenussische Technische Hochschule, Zurich (ETHZ)',
-	OriginalFilename = "HelloG.EXE"
+	OriginalFilename = "HelloGUI.EXE"
