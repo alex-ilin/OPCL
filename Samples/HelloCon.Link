@@ -1,10 +1,9 @@
-PROGRAM HelloG
-SUBSYSTEM GUI
+PROGRAM HelloCon
+SUBSYSTEM CUI
 IMGVERSION 2.4
 HEAPSIZE 010000H
 MODULES
-	Kernel32, Kernel,
-	User32, HelloGUI
+	Kernel32, Kernel, ADVAPI32, Registry, FileDir, Files, Modules, HelloCon
 IMPORTS
 	Kernel.bootHeapAdr = HeapAdr,
 	Kernel.bootHeapSize = HeapSize,
@@ -102,8 +101,20 @@ IMPORTS
 	Kernel32.VirtualAlloc = KERNEL32.VirtualAlloc,
 	Kernel32.VirtualFree = KERNEL32.VirtualFree,
 	Kernel32.WaitForSingleObject = KERNEL32.WaitForSingleObject,
-	Kernel32.WriteFile = KERNEL32.WriteFile
-
+	Kernel32.WriteFile = KERNEL32.WriteFile,
+	ADVAPI32.GetUserName = ADVAPI32.GetUserNameA,
+	ADVAPI32.RegCloseKey = ADVAPI32.RegCloseKey,
+	ADVAPI32.RegCreateKeyEx = ADVAPI32.RegCreateKeyExA,
+	ADVAPI32.RegDeleteKey = ADVAPI32.RegDeleteKeyA,
+	ADVAPI32.RegDeleteValue = ADVAPI32.RegDeleteValueA,
+	ADVAPI32.RegEnumKeyEx = ADVAPI32.RegEnumKeyExA,
+	ADVAPI32.RegEnumValue = ADVAPI32.RegEnumValueA,
+	ADVAPI32.RegOpenKeyEx = ADVAPI32.RegOpenKeyExA,
+	ADVAPI32.RegQueryValueEx = ADVAPI32.RegQueryValueExA,
+	ADVAPI32.RegSetValueEx = ADVAPI32.RegSetValueExA,
+	ADVAPI32.GetFileVersionInfo = Version.GetFileVersionInfoA,
+	ADVAPI32.GetFileVersionInfoSize = Version.GetFileVersionInfoSizeA,
+	ADVAPI32.VerQueryValue = Version.VerQueryValueA
 ICONS
 	Oberon = Oberon.ico
 VERSION
@@ -112,4 +123,4 @@ VERSION
 	FileVersion = "Release 2.4",
 	LegalCopyright = "(c) 2000 Team of the Institute for Computer Systems of ETH Zurich",
 	LegalTrademarks = '"Oberon" and "Gadgets" are trademarks of Eidgenussische Technische Hochschule, Zurich (ETHZ)',
-	OriginalFilename = "HelloG.EXE"
+	OriginalFilename = "Hello.EXE"
