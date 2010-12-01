@@ -28,6 +28,9 @@ Samples\HelloDLL.exe
 
 d) run compiler and linker with /? switch to read brief help information.
 
+If you have GNU Make, Sed and tr installed, then you can simply run 'make' for
+compilation and linking.
+
 Known bugs and limitations
 
 HALT and ASSERT statements are not handled properly. They cause
