@@ -31,7 +31,7 @@ d) run programs
 hello.exe
 hellog.exe
 
-e) run compiler and linker with /? switch to read breaf help information.
+e) run compiler and linker with /? switch to read brief help information.
 
 Known bugs and limitations
 
