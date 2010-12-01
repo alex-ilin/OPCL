@@ -10,28 +10,23 @@ Command line wrapper and 'readme' by Eugene Shcherbatyuk
 
 Notes on usage
 
-Merge o2ethclc.reg into your computer registry.
+Merge Src\o2ethclc.Reg into your computer registry.
 Test the work of compiler and linker using sample programs:
 
-a) compile sample programs
+a) compile and link sample programs
 
-o2ethclc hellocon.mod
-o2ethclc user32.mod
-o2ethclc hellogui.mod
+cd Samples
+CompileAndLink.bat
 
-b) link sample programs
+b) merge Samples\HelloCon.Reg into your computer registry
 
-o2ethcll hellocon.link
-o2ethcll hellogui.link
+c) run programs
 
-c) merge hellocon.reg into your computer registry
+Samples\HelloCon.exe
+Samples\HelloGUI.exe
+Samples\HelloDLL.exe
 
-d) run programs
-
-hello.exe
-hellog.exe
-
-e) run compiler and linker with /? switch to read brief help information.
+d) run compiler and linker with /? switch to read brief help information.
 
 Known bugs and limitations
 
