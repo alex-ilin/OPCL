@@ -2,3 +2,4 @@ O2ETHCLC.EXE compiler executable
 O2ETHCLL.EXE linker executable
 UserGuide.txt An excerpt from ETH Oberon Plugin documentation
 Samples Sample programs
+Src Full build environment for compiler and linker
