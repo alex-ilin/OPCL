@@ -1716,11 +1716,35 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			Files.Register(F); Texts.WriteString(W, " done"); done := TRUE
 		END CreateFile;
 
+		PROCEDURE ListDependencies;
+		BEGIN
+			name := modules;
+			WHILE name # NIL DO
+				Texts.WriteString(W, " "); Texts.WriteString(W, name.name);
+				Texts.WriteString(W, ".Obj");
+				name := name.next
+			END;
+			name := icons;
+			WHILE name # NIL DO
+				Texts.WriteString(W, " "); Texts.WriteString(W, name(IconList).value);
+				name := name.next
+			END;
+			name := cursors;
+			WHILE name # NIL DO
+				Texts.WriteString(W, " "); Texts.WriteString(W, name(CursorList).value);
+				name := name.next
+			END;
+		END ListDependencies;
+
 	BEGIN
 		Init();
 		IF ~Exceptions.Failed(context) THEN
 			ScanLinkText(T);
-			CreateFile;
+			IF dependencyListOnly THEN
+				ListDependencies;
+			ELSE
+				CreateFile;
+			END;
 		ELSE
 			Texts.WriteString(W, error.msg); done := FALSE;
 		END;
@@ -1790,10 +1814,9 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 				Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 				RETURN FALSE;
 			END;
-		ELSE
-			i := j; (* There were no switch *)
-			ch := CmdLine.text[i];
 		END;
+		i := j;
+		ch := CmdLine.text[i];
 		(* look for filename *)
 		WHILE (ch <= " ") & (ch # 0X) DO
 			INC(i);	ch := CmdLine.text[i]; (* Skip blanks in front of filename *)
@@ -1809,7 +1832,9 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			Console.WriteString(SlashQuestionForHelp); Console.WriteLn;
 			RETURN FALSE;
 		END;
-		Console.WriteString("file=");	Console.WriteString(name);	Console.WriteLn();
+		IF ~dependencyListOnly THEN
+			Console.WriteString("file=");	Console.WriteString(name);	Console.WriteLn();
+		END;
 		RETURN TRUE;
 	END GetOptions;
 
