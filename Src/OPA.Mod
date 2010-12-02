@@ -448,7 +448,7 @@ VAR
 	BEGIN
 		WHILE (OPS.ch = SPACE) OR (OPS.ch = TAB) DO OPM.Get(OPS.ch) END;
 		IF OPS.ch = ";" THEN
-			WHILE (OPS.ch # CR) & (OPS.ch # LF) DO OPM.Get(OPS.ch) END	(* Skip comments *)
+			WHILE (OPS.ch # CR) & (OPS.ch # LF) & (OPS.ch # OPM.Eot) DO OPM.Get(OPS.ch) END	(* Skip comments *)
 		END
 	END skipBlanks;
 
