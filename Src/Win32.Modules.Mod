@@ -4,7 +4,7 @@ Refer to the "General ETH Oberon System Source License" contract available at: h
 MODULE Modules;	(** portable, except where noted *)	(* rc/mh/jm/tk/ard/rml/prk/pjm *)
 
 (**
- The Modules module implements the dynamic module loader of the Oberon system. 
+ The Modules module implements the dynamic module loader of the Oberon system.
  It is responsible for loading and freeing modules.
 *)
 
@@ -43,7 +43,7 @@ VAR
 	resMsg*: ARRAY 256 OF CHAR;	(** Explanation of res, if res # 0 *)
 	extension*: ARRAY 8 OF CHAR;	(** Extension of object files (non-portable) *)
 	resMsgLen: LONGINT;
-	
+
 	(** The res codes are listed in the table below.
 		done = 0;
 		fileNotFound = 1
@@ -83,12 +83,12 @@ TYPE
 		nofFixups: INTEGER;
 		offset: POINTER TO ARRAY OF LONGINT
 	END;
-	
+
 CONST
 	(* export/use section *)
 	EUEnd = 0; EURecord = 1; EUobjScope = 0; EUrecScope = 1;  EUerrScope = -1;
-	EUProcFlag = 80000000H; 
-	
+	EUProcFlag = 80000000H;
+
 PROCEDURE LSW (x: LONGINT): LONGINT;
 BEGIN (* least significant word (unsigned) *)
 	RETURN SYSTEM.VAL(LONGINT, SYSTEM.VAL(SET, x) * {0..15})
@@ -217,7 +217,7 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 			link := nextlink
 		UNTIL link = 0FFFFH
 	END FixupCall;
-	
+
 	PROCEDURE FixupVar(code, link, fixval: LONGINT);
 	VAR nofFixups: INTEGER; i, val: LONGINT;
 	BEGIN
@@ -229,7 +229,7 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 			INC(i)
 		END
 	END FixupVar;
-	
+
 	PROCEDURE Fixup(m: Module; link: LinkTab);
 		VAR i, val, offs: LONGINT;
 			modNo, nofFixups: INTEGER;
@@ -297,7 +297,7 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 						END
 				|   247: offs := link[i].link;	(* Lock *)
 						WHILE offs # 0FFFFH DO
-							SYSTEM.GET(codebase + offs, val); 
+							SYSTEM.GET(codebase + offs, val);
 							SYSTEM.PUT(codebase + offs, Kernel.ModuleData[6] - (codebase + offs + 4));
 							offs := MSW(val);
 						END
@@ -318,15 +318,15 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 			INC(i)
 		END
 	END Fixup;
-	
+
 	PROCEDURE LoadExpBlock(VAR R: Files.Rider; M: Module);
 		VAR struct, old: POINTER TO ARRAY OF LONGINT (*ExportPtr*); nofStr: LONGINT; exp: ExportPtr;
-		
+
 		PROCEDURE LoadScope(VAR scope: ExportDesc; level: INTEGER; adr: LONGINT);
-			VAR no, no2: INTEGER; fp, off: LONGINT; 
+			VAR no, no2: INTEGER; fp, off: LONGINT;
 		BEGIN
 			Files.ReadBytes(R, scope.nofExp, 2); no := 0; no2 := 0;
-			IF scope.nofExp # 0 THEN 
+			IF scope.nofExp # 0 THEN
 				NEW(scope.dsc, scope.nofExp);
 				scope.dsc[0].adr := adr
 			END;
@@ -347,28 +347,28 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 						scope.dsc[no2].nofExp := exp.nofExp; scope.dsc[no2].dsc := exp.dsc; (* old type *)
 					ELSE LoadScope(scope.dsc[no2], EUrecScope, off)
 					END
-				ELSE 
+				ELSE
 					IF level = EUobjScope THEN Files.ReadNum(R, scope.dsc[no].adr) END;
 					scope.dsc[no].fp := fp; no2 := no; INC(no)
 				END;
 				Files.ReadNum(R, fp)
 			END
 		END LoadScope;
-	
+
 	BEGIN
 		NEW(struct, 64);
 		nofStr := 0; LoadScope(M.export, EUobjScope, 0)
 	END LoadExpBlock;
-	
+
 	PROCEDURE CheckUseBlock(VAR R: Files.Rider; M: Module);
-		VAR mod: Module; name: ModuleName; 
-	
+		VAR mod: Module; name: ModuleName;
+
 		PROCEDURE Err;
-		BEGIN	
+		BEGIN
 			IF res = 0 THEN COPY(mod.name, imported); res := incompImport; ErrMsg(res)
 			ELSE Ch(9X) END
 		END Err;
-	
+
 		PROCEDURE CheckScope(scope: ExportDesc; level: INTEGER);
 			VAR fp, link, i, tdadr: LONGINT; tadr: ExportPtr; tmpErr: BOOLEAN;
 		BEGIN tmpErr := (level = EUerrScope);
@@ -392,7 +392,7 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 						i := 0;
 						WHILE (i < scope.nofExp) & (scope.dsc[i].fp # fp) DO INC(i) END;
 						IF i >= scope.nofExp THEN Err; tmpErr := TRUE; Ln; Ch(9X);
-							IF name = "@" THEN Str("RECORD ") 
+							IF name = "@" THEN Str("RECORD ")
 							ELSE Str(name)
 							END;
 							Str(" incompatible");
@@ -409,7 +409,7 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 				Files.ReadNum(R, fp)
 			END
 		END CheckScope;
-	
+
 	BEGIN ReadString(R, name);
 		WHILE (name # "") & (res = 0) DO
 			Load(name, mod);
@@ -417,16 +417,16 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 			ReadString(R, name)
 		END
 	END CheckUseBlock;
-	
+
 	PROCEDURE Expect (tag: CHAR): BOOLEAN;
 		VAR ch: CHAR;
 	BEGIN Files.Read(R, ch);
-		IF ch # tag THEN 
+		IF ch # tag THEN
 			res := corruptedObjFile; ErrMsg(res); RETURN FALSE
 		ELSE RETURN TRUE
 		END
 	END Expect;
-	
+
 	PROCEDURE FindTDescAdr(M: Module; fp: LONGINT; VAR adr: LONGINT);
 	VAR i: INTEGER;
 	BEGIN
@@ -436,13 +436,13 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 		ELSE HALT(99)
 		END
 	END FindTDescAdr;
-	
+
 	PROCEDURE ReadTypes (VAR R: Files.Rider);
 		VAR
 			i, j, k, tdsize, recordSize: LONGINT;
 			tdEntry, nofMethods, nofNewMeths, mthNo, nofPointers, root, entryNo: INTEGER;
-			td: TDesc; 
-			name: ModuleName; 
+			td: TDesc;
+			name: ModuleName;
 			ch: CHAR;
 	BEGIN
 		IF LEN(m.tdescs^) # 0 THEN
@@ -540,11 +540,11 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 			arrPtr: POINTER TO RECORD a, b, c, len, data: LONGINT END;
 	BEGIN		(* 43->35 *)
 		size := 16 * ((h.nofEntries*4 + 35) DIV 16
-			+ (h.nofCmds*SIZE(Cmd) + 35) DIV 16 + (h.nofPtrs*4 + 35) DIV 16 
+			+ (h.nofCmds*SIZE(Cmd) + 35) DIV 16 + (h.nofPtrs*4 + 35) DIV 16
 			+ (h.nofTds*4 + 35) DIV 16 + ((h.nofImps)*4 + 35) DIV 16
 			+ (h.dataSize + (-h.dataSize) MOD 8 + h.conSize + 35) DIV 16
 			+ (h.codeSize + 35) DIV 16 + (h.refSize + 35) DIV 16);
-			
+
 		SYSTEM.NEW(arrPtr, size);
 		SYSTEM.GET(SYSTEM.VAL(ADDRESS, arrPtr) - 4, t);
 
@@ -744,7 +744,7 @@ BEGIN
 		Files.Set(R, f, 0); Files.Read(R, tag);
 		IF tag = 0BBX THEN
 			Files.Read(R, tag);
-			IF (tag = ActiveTag) THEN 
+			IF (tag = ActiveTag) THEN
 				LoadModule(R, m)
 			ELSE COPY(name, importing); res := invalidObjFile; ErrMsg(res)
 			END
@@ -767,7 +767,7 @@ BEGIN
 	RETURN mod
 END ThisMod;
 
-(** Returns a procedure variable representing an exported command in a module. 
+(** Returns a procedure variable representing an exported command in a module.
 Calling this procedure executes the command. *)
 
 PROCEDURE ThisCommand* (mod: Module; name: ARRAY OF CHAR): Command;
@@ -832,7 +832,7 @@ BEGIN
 	Kernel32.LeaveCriticalSection(moduleCS)
 END Free;
 
-(** InstallTermHandler - Install a procedure to execute when a module is freed. 
+(** InstallTermHandler - Install a procedure to execute when a module is freed.
 Never perform upcalls in the installed procedure! *)
 
 PROCEDURE InstallTermHandler*(h: Kernel.Proc);

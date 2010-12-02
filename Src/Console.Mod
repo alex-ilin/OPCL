@@ -1,20 +1,20 @@
-(* 
+(*
     Console output for command line wrapper for
     ETH Oberon compiler (Windows)
-    Eugene Shcherbatyuk 
+    Eugene Shcherbatyuk
     Nov 2002
  *)
 
 MODULE Console;
 	IMPORT Kernel32;
-	
-(************************)	
+
+(************************)
 PROCEDURE WriteString*(str:ARRAY OF CHAR);
 BEGIN
   Kernel32.Str(str)
 END WriteString;
 
-(************************)	
+(************************)
 PROCEDURE Write*(ch: CHAR);
 VAR str: ARRAY 2 OF CHAR;
 BEGIN

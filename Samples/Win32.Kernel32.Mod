@@ -101,7 +101,7 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz  *)
 
 		(** WaitForSingleObject infinite time value *)
 		Infinite* = 0FFFFFFFFH;
-		
+
 		(** WaitForSingleObject return values *)
 		WaitTimeout* = 0102H;
 
@@ -141,8 +141,8 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz  *)
 			ftCreationTime*, ftLastAccessTime*, ftLastWriteTime*: FileTime;
 			nFileSizeHigh*, nFileSizeLow*: LONGINT;
 			dwReserved0*, dwReserved1*: LONGINT;
-			cFileName*: ARRAY MaxPath OF CHAR; 
-			cAlternateFileName*: ARRAY 14 OF CHAR 
+			cFileName*: ARRAY MaxPath OF CHAR;
+			cAlternateFileName*: ARRAY 14 OF CHAR
 		END;
 
 		(** The SYSTEMTIME structure represents a date and time using individual members for the month, day, year, weekday,
@@ -163,7 +163,7 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz  *)
 		END;
 
 		(** thread context and exception information *)
- 
+
 		FloatingSaveArea* = RECORD [NOTAG]
 			ControlWord*, StatusWord*, TagWord*, ErrorOffset*, ErrorSelector*, DataOffset*, DataSelector*: LONGINT;
 			RegisterArea*: ARRAY SizeOf80387Registers OF SYSTEM.BYTE;
@@ -180,13 +180,13 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz  *)
 		END;
 
 		ExceptionRecordPtr* = POINTER TO ExceptionRecord;
-		ExceptionRecord* = RECORD [NOTAG] 
+		ExceptionRecord* = RECORD [NOTAG]
 			ExceptionCode*, ExceptionFlags*: LONGINT;
 			nextExceptionRecord*: ExceptionRecordPtr;
 			ExceptionAddress*: ADDRESS;
 			NumberParameters*: LONGINT;
 			ExceptionInformation*: ARRAY ExceptionMaximumParameters OF LONGINT
-		END; 
+		END;
 
 		ExcpFrmPtr* = ADDRESS;
 		ExcpFrmHandler* = PROCEDURE [WINAPI] (VAR excpRec: ExceptionRecord; excpFrame: ExcpFrmPtr; VAR context: Context; dispatch: LONGINT): LONGINT;
@@ -227,14 +227,14 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz  *)
 			lpReserved2*: ADDRESS;
 			hStdInput*, hStdOutput*, hStdError*: HANDLE
 		END;
- 
+
 		(** The OSVersionInfo data structure contains operating system version information. *)
 		OSVersionInfo* = RECORD [NOTAG]
 			dwOSVersionInfoSize*,
 			dwMajorVersion*, dwMinorVersion*,
 			dwBuildNumber*, dwPlatformId*: LONGINT;
-			szCSDVersion*: ARRAY 128 OF CHAR 
-		END; 
+			szCSDVersion*: ARRAY 128 OF CHAR
+		END;
 
 		Exception* = RECORD
 			exc*: ExceptionRecord;
@@ -455,8 +455,8 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz  *)
 		(** The VirtualFree function releases or decommits (or both) a region of pages within the virtual address space of the
 			calling process. *)
 		VirtualFree-: PROCEDURE [WINAPI] (lpAddress: ADDRESS; dwSize: LONGINT; dwFreeType: SET): BOOL;
-		(** The WaitForSingleObject function returns when one of the following occurs: 
-			The specified object is in the signaled state. 
+		(** The WaitForSingleObject function returns when one of the following occurs:
+			The specified object is in the signaled state.
 			The time-out interval elapses. *)
 		WaitForSingleObject-: PROCEDURE [WINAPI] (hHandle: HANDLE; dwMilliseconds: LONGINT): LONGINT;
 		(** The WriteFile function writes data to a file and is designed for both synchronous and asynchronous operation. *)
@@ -552,7 +552,7 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz  *)
 			END
 		ELSE
 			x0 := i
-		END;	
+		END;
 		REPEAT
 			a[k] := CHR(x0 MOD 10 + 30H); x0 := x0 DIV 10; INC(k)
 		UNTIL x0 = 0;

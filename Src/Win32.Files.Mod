@@ -475,7 +475,7 @@ IF pos > F.len THEN pos := F.len ELSIF pos < 0 THEN pos := 0 END;
 		IF offset = buf.size THEN
 			INC(buf.size); INC(F.len)
 		END;
-		R.offset := offset+1; R.res := 0 
+		R.offset := offset+1; R.res := 0
 	END Write;
 
 (** Writes the buffer x containing n bytes into a file at the Rider position. *)
@@ -495,7 +495,7 @@ IF pos > F.len THEN pos := F.len ELSIF pos < 0 THEN pos := 0 END;
 			IF offset > buf.size THEN INC(F.len, offset - buf.size); buf.size := offset END;
 			INC(xpos, min); DEC(n, min); buf.dirty := TRUE
 		END;
-		R.res := 0 
+		R.res := 0
 	END WriteBytes;
 
 (** Portable routines to read the standard Oberon types. *)

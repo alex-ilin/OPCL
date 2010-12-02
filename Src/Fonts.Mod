@@ -7,7 +7,7 @@ MODULE Fonts; (** portable / source: Win32.Fonts.Mod *)	(* ejz *)
 	CONST
 		substitute* = -1; font* = 0; metric* = 1;	(** Font types. *)
 
-	TYPE 
+	TYPE
 		Char* = POINTER TO CharDesc;
 		Font* = POINTER TO FontDesc;
 

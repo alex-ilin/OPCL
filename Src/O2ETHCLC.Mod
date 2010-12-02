@@ -1,4 +1,4 @@
-(* 
+(*
     Command line wrapper for ETH Oberon compiler (Windows).
     This version of 'Compiler' module was reduced to compile from file only.
     Eugene Shcherbatyuk (ugns@mail.ru)
@@ -16,12 +16,12 @@ MODULE O2ETHCLC;
 		FileDir,
 		OPP, OPB, OPV, OPT, OPS, OPC, OPL, OPO, OPM,
 		Modules, Texts, Console, CmdLine;
-	
+
 	CONST
 		module = OPS.module;
 		ident = OPS.ident;
 		period = OPS.period;	(* symbols *)
-		
+
 	VAR
 		W: Texts.Writer;
 
@@ -73,7 +73,7 @@ BEGIN
   Console.WriteLn();
   Console.WriteString("Default options are FneSwPZAXTv3");
 END AboutOptions;
-    
+
 (***********************************)
 PROCEDURE GetOptions(VAR path, name, opts: ARRAY OF CHAR):BOOLEAN;
 		VAR i, j, k : LONGINT; ch: CHAR;
@@ -222,7 +222,7 @@ PROCEDURE ParseOptions(VAR options: ARRAY OF CHAR;  VAR opt: SET);
 			ELSIF ch = "2" THEN INCL(opt, OPM.oberon2); EXCL(opt, OPM.oberon1)
 			ELSIF ch = "1" THEN INCL(opt, OPM.oberon1); EXCL(opt, OPM.oberon2)
 		    END;
-		END;	
+		END;
 END ParseOptions;
 
 (***********************************)
@@ -243,7 +243,7 @@ END ParseOptions;
 PROCEDURE SignOn;
 	BEGIN
 		Texts.WriteString(W, "Oberon Portable Compiler / nw, rc, nm, tk, prk"); Texts.WriteLn(W);
-		Texts.WriteString(W, OPP.SignOnMessage); Texts.WriteLn(W); 
+		Texts.WriteString(W, OPP.SignOnMessage); Texts.WriteLn(W);
 		Texts.Append(Texts.Log, W.buf)
 END SignOn;
 

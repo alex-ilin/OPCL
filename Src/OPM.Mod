@@ -27,7 +27,7 @@ MODULE OPM;	(** non-portable *)
 
 		(* value of constant NIL *)
 		nilval* = 0;
-		
+
 		(* target machine minimum values of basic types expressed in host machine format: *)
 		MinSInt* = -80H;
 		MinInt* = -8000H;
@@ -35,7 +35,7 @@ MODULE OPM;	(** non-portable *)
 		MinRealPat = 0FF7FFFFFH;	(* most  negative, 32-bit pattern *)
 		MinLRealPatL = 0FFFFFFFFH;	(* most  negative, lower 32-bit pattern *)
 		MinLRealPatH = 0FFEFFFFFH;	(* most  negative, higher 32-bit pattern *)
-		
+
 		(* target machine maximum values of basic types expressed in host machine format: *)
 		MaxSInt* = 7FH;
 		MaxInt* = 7FFFH;
@@ -44,7 +44,7 @@ MODULE OPM;	(** non-portable *)
 		MaxRealPat = 7F7FFFFFH;	(* most positive, 32-bit pattern *)
 		MaxLRealPatL = 0FFFFFFFFH;	(* most positive, lower 32-bit pattern *)
 		MaxLRealPatH = 7FEFFFFFH;		(* most positive, higher 32-bit pattern *)
-		
+
 		(* maximal index value for array declaration: *)
 		MaxIndex* = MaxLInt;
 
@@ -52,7 +52,7 @@ MODULE OPM;	(** non-portable *)
 		MaxHDig* = 8;	(* maximal hexadecimal longint length *)
 		MaxRExp* = 38;	(* maximal real exponent *)
 		MaxLExp* = 308;	(* maximal longreal exponent *)
-		
+
 		(* inclusive range of parameter of standard procedure HALT: *)
 		MinHaltNr* = 20;
 		MaxHaltNr* = MAX(LONGINT);
@@ -60,25 +60,25 @@ MODULE OPM;	(** non-portable *)
 		(* inclusive range of register number of procedures SYSTEM.GETREG and SYSTEM.PUTREG: *)
 		MinRegNr* = 0;	(* interpretation is left to the back-end, e.g. for i386: *)
 		MaxRegNr* = 31;	(* F0-F7 if second parameter is REAL or LONGREAL, R0-R7 else *)
-		
+
 		(* maximal value of flag used to mark interface structures: *)
 		MaxSysFlag* = 0;	(* i386: only 0 is valid, not used *)
-		
+
 		(* maximal condition value of parameter of SYSTEM.CC: *)
 		MaxCC* = -1;	(* not implemented interpretation is left to the back-end *)
-		
+
 		(* initialization of linkadr field in ObjDesc, must be different from any valid link address: *)
 		LANotAlloc* = -1;
-		
+
 		(* initialization of constant address, must be different from any valid constant address: *)
 		ConstNotAlloc* = -1;	(* i386: only strings are allocated *)
-		
+
 		(* initialization of tdadr field in StrDesc, must be different from any valid address: *)
 		TDAdrUndef* = -1;
-		
+
 		(* maximal number of cases in a case statement: *)
 		MaxCases* = 128;
-		
+
 		(* maximal range of a case statement (higher label - lower label ~ jump table size): *)
 		MaxCaseRange* = 512;
 
@@ -96,7 +96,7 @@ MODULE OPM;	(** non-portable *)
 		Eot* = 0X;
 		SetLen = MAX(SET)+1;
 		NumErrors = (912+SetLen) DIV SetLen * SetLen;
-		
+
 		(** Compiler Options *)
 		inxchk* = 0;	(** index check *)
 		ovflchk* = 1;	(** overflow check *)
@@ -148,7 +148,7 @@ MODULE OPM;	(** non-portable *)
 		W: Texts.Writer;
 		oldSymF, newSymF, ObjF, RefF, ModF: Files.Rider;
 		RefFile, ObjFile, ModFile, oldSymFile, newSymFile: Files.File;
-		
+
 	PROCEDURE Init*(opt: SET; source: Texts.Reader; log: Texts.Text);
 		VAR i: SHORTINT;
 	BEGIN inR := source; Log := log; options := opt;
@@ -156,13 +156,13 @@ MODULE OPM;	(** non-portable *)
 		FOR i := 0 TO NumErrors DIV SetLen - 1 DO errors[i] := {} END;
 		Kernel.GC()
 	END Init;
-	
+
 	PROCEDURE Close*;
 	BEGIN
 		Files.Set(oldSymF, NIL, 0); Files.Set(newSymF, NIL, 0); Files.Set(ObjF, NIL, 0); Files.Set(RefF, NIL, 0);
 		oldSymFile := NIL; newSymFile := NIL; ObjFile := NIL;  RefFile := NIL;
 	END Close;
-	
+
 	PROCEDURE Get*(VAR ch: CHAR);	(* read next character from source text, Eot if no more *)
 	BEGIN
 		(* System3 get: skip embedded objects *)
@@ -170,7 +170,7 @@ MODULE OPM;	(** non-portable *)
 			Texts.Read(inR, ch); INC(curpos)
 		(*UNTIL inR.eot OR ((inR.lib # NIL) & (inR.lib IS Fonts.Font))*)
 	END Get;
-	
+
 	PROCEDURE MakeFileName(VAR path, prefix, modName, fileName: ARRAY OF CHAR; ext: ARRAY OF CHAR);
 		VAR i, j: INTEGER; ch: CHAR;
 	BEGIN	i:=0; ch:=path[0];
@@ -205,7 +205,7 @@ MODULE OPM;	(** non-portable *)
 		SYSTEM.GET(SYSTEM.ADR(lr)+4, l); SYSTEM.GET(SYSTEM.ADR(lr), h);
 		FPrint(fp, l); FPrint(fp, h);
 	END FPrintLReal;
-	
+
 	(* ----- auxiliaries ----- *)
 
 	PROCEDURE WString(VAR R: Files.Rider; VAR s: ARRAY OF CHAR);
@@ -215,7 +215,7 @@ MODULE OPM;	(** non-portable *)
 		WHILE	(ch#0X) & (ch<7FX)	DO	INC(i); ch:=s[i]	END;
 		IF	i>1	THEN	Files.WriteBytes(R, s, i-1)	END;
 		IF	ch=0X	THEN	Files.Write(R, CHR(ORD(s[i-1])+80H))
-		ELSE	
+		ELSE
 			IF	i>0	THEN	Files.Write(R, s[i-1])	END;
 			Files.Write(R, 7FX); REPEAT	Files.Write(R, ch); INC(i); ch:=s[i]	UNTIL ch=0X;
 			Files.Write(R, 0X)
@@ -223,17 +223,17 @@ MODULE OPM;	(** non-portable *)
 	END WString;
 
 	(* ------------------------- Log Output ------------------------- *)
-	
+
 	PROCEDURE LogW*(ch: CHAR);
 	BEGIN
 		Texts.Write(W, ch); Texts.Append(Log, W.buf)
 	END LogW;
-	
+
 	PROCEDURE LogWStr*(s: ARRAY OF CHAR);
 	BEGIN
 		Texts.WriteString(W, s); Texts.Append(Log, W.buf)
 	END LogWStr;
-	
+
 	PROCEDURE LogWNum*(i, len: LONGINT);
 	BEGIN
 		Texts.WriteInt(W, i, len); Texts.Append(Log, W.buf)
@@ -247,7 +247,7 @@ MODULE OPM;	(** non-portable *)
 	BEGIN
 		Texts.WriteLn(W); Texts.Append(Log, W.buf)
 	END LogWLn;
-	
+
 	PROCEDURE ErrorMsg(n: INTEGER);
 	VAR T: Texts.Text; s: Texts.Scanner; ch: CHAR;  e: ARRAY 127 OF CHAR;  i: SHORTINT;
 	BEGIN
@@ -270,7 +270,7 @@ MODULE OPM;	(** non-portable *)
 			END
 		END
 	END ErrorMsg;
-	
+
 	PROCEDURE Mark*(n: INTEGER; pos: LONGINT);
 	BEGIN
 		IF n >= 0 THEN
@@ -295,13 +295,13 @@ MODULE OPM;	(** non-portable *)
 			ErrorMsg(-n)
 		END
 	END Mark;
-	
+
 	PROCEDURE err*(n: INTEGER);
 	BEGIN Mark(n, errpos)
 	END err;
 
 	(* ------------------------- Write Symbol File ------------------------- *)
-	
+
 	PROCEDURE SymW*(b: CHAR);
 	BEGIN	Files.Write(newSymF, b)
 	END SymW;
@@ -341,11 +341,11 @@ MODULE OPM;	(** non-portable *)
 	PROCEDURE SymWReal*(r: REAL);
 	BEGIN Files.WriteReal(newSymF, r)
 	END SymWReal;
-	
+
 	PROCEDURE SymWLReal*(lr: LONGREAL);
 	BEGIN Files.WriteLReal(newSymF, lr)
 	END SymWLReal;
-	
+
 	PROCEDURE SymWString*(VAR s: ARRAY OF CHAR);
 	BEGIN	WString(newSymF, s)
 	END SymWString;
@@ -404,7 +404,7 @@ MODULE OPM;	(** non-portable *)
 		VAR  fileName: FileDir.FileName; ch, ch1: CHAR; symSize: LONGINT; F: Files.File; empty: ARRAY 1 OF CHAR;
 	BEGIN
 		empty[0] := 0X;
-		MakeFileName(outputPath, empty, name, fileName, extension); 
+		MakeFileName(outputPath, empty, name, fileName, extension);
 		done := FALSE;
 		F := Files.Old(fileName);
 		IF F # NIL THEN done := TRUE; Files.Set(R, F, 0);
@@ -417,7 +417,7 @@ MODULE OPM;	(** non-portable *)
 			END
 		END;
 	END OpenSym;
-	
+
 	PROCEDURE Begin*(VAR modName: ARRAY OF CHAR);
 		VAR ObjFName: FileDir.FileName;
 	BEGIN
@@ -425,7 +425,7 @@ MODULE OPM;	(** non-portable *)
 		ObjFile:=Files.New(ObjFName);
 		IF ObjFile = NIL THEN  err(153);  RETURN  END;
 		Files.Set(ObjF, ObjFile, 0); Files.Write(ObjF, OFtag);
-		ModFile:=Files.New(""); Files.Set(ModF, ModFile, 0); 
+		ModFile:=Files.New(""); Files.Set(ModF, ModFile, 0);
 		newSymFile:=Files.New(""); Files.Set(newSymF, newSymFile, 0);
 		RefFile := Files.New(""); Files.Set(RefF, RefFile, 0);
 		IF aos IN options THEN
@@ -442,8 +442,8 @@ MODULE OPM;	(** non-portable *)
 	END Commit;
 
 	PROCEDURE EndSym*;
-		VAR sfsize: LONGINT;  
-	BEGIN	Files.Write(ModF, 0X); 
+		VAR sfsize: LONGINT;
+	BEGIN	Files.Write(ModF, 0X);
 		sfsize:=Files.Length(newSymFile)+Files.Length(ModFile); Files.WriteNum(ObjF, sfsize);
 		Commit(ModFile); Commit(newSymFile);
 		refpatch:=Files.Pos(ObjF); ObjWInt(0); ObjWInt(0)
@@ -452,11 +452,11 @@ MODULE OPM;	(** non-portable *)
 	PROCEDURE EndObj*;
 		VAR refsize: LONGINT;
 	BEGIN
-		refsize:=Files.Length(RefFile); ObjW(8DX); Commit(RefFile); 
-		Files.Set(ObjF, ObjFile, refpatch); ObjWBytes(refsize, 4); 
-		Files.Register(ObjFile); 
+		refsize:=Files.Length(RefFile); ObjW(8DX); Commit(RefFile);
+		Files.Set(ObjF, ObjFile, refpatch); ObjWBytes(refsize, 4);
+		Files.Register(ObjFile);
 	END EndObj;
-	
+
 	PROCEDURE CloseObj*;
 		VAR refsize: LONGINT; ch: CHAR; ref: Files.Rider;
 	BEGIN (*ref block*)

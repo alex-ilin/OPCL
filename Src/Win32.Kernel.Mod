@@ -29,7 +29,7 @@ TYPE
 	ExportPtr* = POINTER TO ExportDesc;
 	ExportDesc* = RECORD
 		fp*: LONGINT; adr*: LONGINT;
-		nofExp*: INTEGER; 
+		nofExp*: INTEGER;
 		dsc*: POINTER TO ARRAY OF ExportDesc
 	END;
 	ArrayPtr* = POINTER TO ARRAY OF LONGINT;
@@ -73,7 +73,7 @@ TYPE
 	InitPtr = POINTER TO RECORD tag: Tag; z0, z1, z2, z3, z4, z5, z6, z7: LONGINT END;
 		(* the following type is used indirectly in InitHeap *)
 	PtrElemDesc = RECORD a: SYSTEM.PTR END;	(* has same type descriptor as element of ARRAY OF POINTER *)
-	
+
 	Finalizer* = PROCEDURE (obj: SYSTEM.PTR);
 	FinObj = POINTER TO RECORD
 		next: FinObj;
@@ -162,7 +162,7 @@ BEGIN
 	RETURN avail
 END Available;
 
-(** LargestAvailable - Return the size in bytes of the largest free available memory block. Allocating objects with a size greater than this size will cause the memory allocation to fail. *) 
+(** LargestAvailable - Return the size in bytes of the largest free available memory block. Allocating objects with a size greater than this size will cause the memory allocation to fail. *)
 
 PROCEDURE LargestAvailable*(): LONGINT;
 	VAR i, max: LONGINT; ptr: FreeBlockPtr;
@@ -181,7 +181,7 @@ BEGIN
 	RETURN max
 END LargestAvailable;
 
-(** Used - Return the size in bytes of the amount of memory currently in use in the heap. *) 
+(** Used - Return the size in bytes of the amount of memory currently in use in the heap. *)
 
 PROCEDURE Used*(): LONGINT;
 	VAR block: HeapBlock; size: LONGINT;
@@ -408,7 +408,7 @@ BEGIN
 				IF block = SYSTEM.VAL(Blockm4Ptr, hblock.endBlock) THEN EXIT END
 			END
 		END;
-		hblock := SYSTEM.VAL(HeapBlock, hblock.next) 
+		hblock := SYSTEM.VAL(HeapBlock, hblock.next)
 	END;
 	nofcand := 0
 END CheckCandidates;
@@ -439,7 +439,7 @@ BEGIN
 				ELSE (* skip *)
 				END
 			END;
-			block := SYSTEM.VAL(HeapBlock, block.next) 
+			block := SYSTEM.VAL(HeapBlock, block.next)
 		END
 	END
 END Candidate;
@@ -469,13 +469,13 @@ BEGIN
 		m := modules;	(* ModuleDesc and ModuleBlock are marked via Kernel.modules *)
 		WHILE m # NIL DO
 			Mark(SYSTEM.VAL(BlockPtr, m));	(* the code, data etc. is marked via fields of m *)
-			i := LEN(m.ptrTab); IF i > 0 THEN ptradr := SYSTEM.ADR(m.ptrTab[0]) END; 
+			i := LEN(m.ptrTab); IF i > 0 THEN ptradr := SYSTEM.ADR(m.ptrTab[0]) END;
 			WHILE i > 0 DO
 				SYSTEM.GET(ptradr, p); SYSTEM.GET(p, ptr);
 				IF ptr # NIL THEN Mark(ptr) END;
 				DEC(i); INC(ptradr, 4)
 			END;
-			i := LEN(m.tdescs); IF i > 0 THEN ptradr := SYSTEM.ADR(m.tdescs[0]) END; 
+			i := LEN(m.tdescs); IF i > 0 THEN ptradr := SYSTEM.ADR(m.tdescs[0]) END;
 			WHILE i > 0 DO
 				SYSTEM.GET(ptradr, ptr); Mark(ptr);
 				DEC(i); INC(ptradr, 4)
@@ -576,7 +576,7 @@ END NewBlock;
 (* NewRec - Implementation of NEW.  Do not call directly. *)
 
 PROCEDURE *NewRec(VAR p: ADDRESS; tag: Tag);	(* implementation of NEW(ptr) *)
-	VAR size: LONGINT; ptr, init: InitPtr; 
+	VAR size: LONGINT; ptr, init: InitPtr;
 BEGIN (* tag^.size = rectyp^.size *)
 	ASSERT(SYSTEM.VAL(LONGINT, tag) MOD 8 = 0);	(* no Oberon-X flags allowed *)
 	IF tag = NIL THEN tag := SYSTEM.VAL(Tag, ptrElemTag) END;	(* descriptor for ARRAY * OF *)
@@ -619,7 +619,7 @@ END NewSys;
 (* NewArr - Implementation of NEW.  Do not call directly. *)
 
 PROCEDURE *NewArr(VAR p: ADDRESS; eltag: Tag; nofelem, nofdim: LONGINT);
-VAR size, firstElem, elSize, arrSize, vectSize: LONGINT; ptr, init: InitPtr; 
+VAR size, firstElem, elSize, arrSize, vectSize: LONGINT; ptr, init: InitPtr;
 BEGIN
 	ASSERT(SYSTEM.VAL(LONGINT, eltag) MOD 4 = 0);
 	IF eltag = NIL THEN

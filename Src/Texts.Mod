@@ -1,8 +1,8 @@
-(* 
+(*
     Command line wrapper for
     ETH Oberon compiler (Windows)
     This 'Texts' module inputs from file and outputs to console
-    Eugene Shcherbatyuk 
+    Eugene Shcherbatyuk
     Nov 2002
  *)
 
@@ -375,7 +375,7 @@ BEGIN
 		Files.Set(R, f, 0); Files.Read(R, ch);
 		(*IF ch = DocBlockId THEN ReadDocHeader(R, ch);  END;
 		IF (ch = TextBlockId) OR (ch = OldTextBlockId) THEN Load(T, f, Files.Pos(R), len);
-		ELSE LoadAscii(T, f); 
+		ELSE LoadAscii(T, f);
 		END*)
 		LoadAscii(T, f);
 	ELSE GenNew(T);
@@ -546,9 +546,9 @@ BEGIN
 		qb.len := qb.len - (beg - org);
 		qb.off := qb.off + (beg - org);
 		qe := qb;
-		WHILE end > org + p.len DO 
+		WHILE end > org + p.len DO
 			org := org + p.len; p := p.next; SyncPiece(T, p);
-			NEW(q); q^ := p^; q.ref := MIN(INTEGER); 
+			NEW(q); q^ := p^; q.ref := MIN(INTEGER);
 			qe.next := q; q.prev := qe; qe := q
 		END;
 		qe.next := NIL; qe.len := qe.len - (org + p.len - end);
@@ -636,7 +636,7 @@ BEGIN
 	F.pos := org; F.ref := p
 END FindObj;
 
-(** Open text reader R and set it up at position pos in text T. *) 
+(** Open text reader R and set it up at position pos in text T. *)
 PROCEDURE OpenReader*(VAR R: Reader; T: Text; pos: LONGINT);
 	VAR p: Piece; org: LONGINT;
 BEGIN
@@ -1209,7 +1209,7 @@ Fonts.Font also settles the question. Non-character objects of a text are typica
 	Real	Any valid REAL number, including exponent E.
 	LongReal	Any valid LONGREAL number, including exponent D.
 	Char	A character (single) not classified as one of the above.
-	
+
 5. The end of line character is carriage return (CR or 0DX), tabulators are 9X. Unprintable characters are show on the display as smallish square boxes.
 
 6. Vertical offsets are typically measured in screen pixels (positive or negative to the text base line).
@@ -1230,7 +1230,7 @@ Fonts.Font also settles the question. Non-character objects of a text are typica
 	Insert(pos, buf)	M.beg = pos
 		M.end = pos
 		M.len = B.len
-		
+
 The general scheme is that the stretch between M.beg and M.end was "deleted", and a new stretch of length M.len was inserted at M.beg. The message indicates a change AFTER it has already been made by the texts module.
 
 9. There is an asymmetry in writing and reading texts to a file. Each text "block" in a file is identified by a first character. Reading a text block requires that the starting position does not include this character, while writing a text block writes the id character automatically.

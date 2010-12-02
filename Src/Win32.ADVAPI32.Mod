@@ -55,5 +55,5 @@ MODULE ADVAPI32; (** non-portable / source: Win32.ADVAPI32.Mod *)	(* ejz *)
 		GetFileVersionInfoSize-: PROCEDURE [WINAPI] (lpstrFilename: ARRAY [NOTAG] OF CHAR; VAR lpdwHandle: LONGINT): LONGINT;
 		(** The VerQueryValue function returns selected version information from the specified version-information resource. *)
 		VerQueryValue-: PROCEDURE [WINAPI] (pBlock: ARRAY [NOTAG] OF SYSTEM.BYTE; lpSubBlock: ARRAY [NOTAG] OF CHAR; VAR lplpBuffer: Kernel32.ADDRESS; VAR puLen: LONGINT): Kernel32.BOOL;
-		
+
 END ADVAPI32.

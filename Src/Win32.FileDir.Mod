@@ -234,7 +234,7 @@ must be calculated. When
 	path = "."	=> enumerate files in current directory
 	path = ""	=> enumerate files in the search path
 	path = ?	=> enumerate files in the directory ?
-	
+
 	Directories are always returned independent of the pattern specified. The only wildcard allowed is *. *)
 	PROCEDURE EnumerateFiles*(path, pattern: ARRAY OF CHAR; detail: BOOLEAN; enum: FileEnumerator);		(** non-portable *)
 		VAR curPath: FileName; i, j: LONGINT;

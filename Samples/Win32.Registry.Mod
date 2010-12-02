@@ -205,7 +205,7 @@ MODULE Registry; (** non-portable / source: Win32.Registry.Mod *)	(* ejz  *)
 				hFile := Kernel32.CreateFile(file, {Kernel32.GenericWrite}, {Kernel32.FileShareRead}, NIL, Kernel32.CreateAlways, {Kernel32.FileAttributeNormal}, Kernel32.NULL);
 				i := 1;
 				WHILE (i <= 9) & (hFile = Kernel32.InvalidHandleValue) DO
-					file[j] := CHR(i+ORD("0")); file[j+11] := 0X; 
+					file[j] := CHR(i+ORD("0")); file[j+11] := 0X;
 					hFile := Kernel32.CreateFile(file, {Kernel32.GenericWrite}, {Kernel32.FileShareRead}, NIL, Kernel32.CreateAlways, {Kernel32.FileAttributeNormal}, Kernel32.NULL);
 					INC(i)
 				END
@@ -252,12 +252,12 @@ MODULE Registry; (** non-portable / source: Win32.Registry.Mod *)	(* ejz  *)
 			IF ch = "-" THEN
 				value[i] := 0X; i := 0;
 				IF name = "Registry" THEN COPY(value, version) END
-			ELSIF ch = "=" THEN 
+			ELSIF ch = "=" THEN
 				value[i] := 0X; i := 0; COPY(value, name)
 			ELSIF ch > " " THEN
 				value[i] := ch; INC(i)
 			ELSE
-				value[i] := 0X		
+				value[i] := 0X
 			END
 		UNTIL ch = 0X;
 		IF (i > 0) & (name = "Registry") THEN
