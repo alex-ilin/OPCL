@@ -16,9 +16,8 @@ Notes on usage
 Merge Src\o2ethclc.Reg into your computer registry.
 Test the work of compiler and linker using sample programs:
 
-a) compile and link sample programs
+a) compile and link the compiler, linker and sample programs
 
-cd Samples
 CompileAndLink.bat
 
 b) merge Samples\HelloCon.Reg into your computer registry
