@@ -1765,7 +1765,7 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 		Console.WriteLn();
 		Console.WriteString("Run 'O2ETHCLL /?' for this information.");	Console.WriteLn();
 		Console.WriteString("Run 'O2ETHCLL file' to link executable.");	Console.WriteLn();
-		Console.WriteString("Run 'O2ETHCLL /d file' to output dependency list only.");	Console.WriteLn();
+		Console.WriteString("Run 'O2ETHCLL file /d' to output dependency list only.");	Console.WriteLn();
 		Console.WriteLn();
 		Console.WriteString("file - filename of the 'link' project file");	Console.WriteLn();
 	END About;
