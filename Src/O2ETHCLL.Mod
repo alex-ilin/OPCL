@@ -16,7 +16,7 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 		ImageDosSignature = 05A4DH; (* MZ *)
 		ImageNtSignature = 000004550H; (* PE00 *)
 		ImageFileRelocsStripped = 00001H; (* Relocation info stripped from file. *)
-		ImageFileExecutableImage = 00002H; (* File is executable (i.e. no unresolved externel references). *)
+		ImageFileExecutableImage = 00002H; (* File is executable (i.e. no unresolved external references). *)
 		ImageFileLineNumsStripped = 00004H; (* Line nunbers stripped from file. *)
 		ImageFileLocalSymsStripped = 00008H; (* Local symbols stripped from file. *)
 
