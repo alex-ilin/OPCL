@@ -41,3 +41,18 @@ some of the nessecary files in the current directory. Note, please,
 linker will report, say, 'advapi32 not found' and cause windows
 application error. That is not an error indeed. That is unhandled
 exception caused by issuing HALT command within linker code.
+
+History
+
+03 Dec 2010, v0.2
+- Add full sources, made compiler and linker self-compilable
+- Add Makefiles for GNU Make and CompileAndLink.bat files
+- Add Linker '/d' option
+- Add HelloDLL sample projects
+- EOL converted to Windows CRLF, removed binary file headers
+- Fix inline assembler (OPA.Mod) LF and comment handling
+- Update documentation
+- GitHub hosting: https://github.com/AlexIljin/OPCL
+
+?? Nov 2002, v0.1
+- Initial release by Eugene Shcherbatyuk.
