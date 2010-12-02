@@ -1,4 +1,4 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 (* NM, prk *)
@@ -704,6 +704,14 @@ MODULE OPO;
 	(* no intersegemt return implemented yet *)
 	BEGIN
 		IF size = 0 THEN PutByte (0C3H)
+		ELSIF size > 0FFFFH THEN
+			(* ret takes only 16bit operands, thus returning more than 10000H bytes must be done by hand*)
+			(* POP EBX *)
+			(* ADD ESP, size*)
+			(* JMP EBX*)
+			GenPOP(Regs, EBX, noBase, noInx, noScale, noDisp);
+			GenTyp1(ADD, ImmReg, ESP, noBase, noInx, noScale, noDisp, size);
+			GenJMP(Regs, EBX, noBase, noInx, noScale, noDisp)
 		ELSE
 			PutByte (0C2H); PutWord (size)
 		END
@@ -907,5 +915,4 @@ MODULE OPO;
 	END GenFLDCW;
 
 BEGIN	NEW(constant, 1024)
-
 END OPO.

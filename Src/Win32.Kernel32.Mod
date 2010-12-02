@@ -117,6 +117,50 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz *)
 		(** OSVersionInfo dwPlatformId values *)
 		VerPlatformWin32s* = 0; VerPlatformWin32Windows* = 1; VerPlatformWin32NT* = 2;
 
+		(** EscapeCommFunction *)
+		SETXOFF* = 1; SETXON* = 2;
+		SETRTS* = 3; CLRRTS* = 4;
+		SETDTR* = 5; CLRDTR* = 6;
+		RESETDEV* = 7;
+		SETBREAK* = 8; CLRBREAK* = 9;
+
+		(** PurgeComm *)
+		PurgeTXAbort* = 0; PurgeRXAbort* = 1;
+		PurgeTXClear* = 2; PurgeRXClear* = 3;
+
+		(** SetCommMask *)
+		EVRXChar* = 0;
+		EVRXFlag* = 1;
+		EVTXEmpty* = 2;
+		EVCTS* = 3;
+		EVDSR* = 4;
+		EVRLSD* = 5;
+		EVBreak* = 6;
+		EVErr* = 7;
+		EVRing* = 8;
+		EVPErr* = 9;
+		EVRX80Full* = 10;
+		EVEvent1* = 11;
+		EVEvent2* = 12;
+
+		(** GetCommModemStatus *)
+		MSCTSOn* = 4;
+		MSDSROn* = 5;
+		MSRingOn* = 6;
+		MSRLSDOn* = 7;
+
+		(** DCB *)
+		NoParity* = 0X;
+		OddParity* = 1X; EvenParity* = 2X;
+		MarkParity* = 3X; SpaceParity* = 4X;
+		OneStopBit* = 0X; One5StopBits* = 1X; TwoStopBits* = 2X;
+
+		(** GetLastError *)
+		ErrorSuccess* = 0;
+		ErrorFileNotFound* = 2;
+		ErrorAccessDenied* = 5;
+		ErrorInvalidParameter* = 87;
+
 	TYPE
 		OutputStringProc* = PROCEDURE (VAR str: ARRAY OF CHAR);
 
@@ -241,9 +285,31 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz *)
 			cont*: Context
 		END;
 
+		CommTimeouts* = RECORD [NOTAG]
+			ReadIntervalTimeout*, ReadTotalTimeoutMultiplier*,
+			ReadTotalTimeoutConstant*, WriteTotalTimeoutMultiplier*,
+			WriteTotalTimeoutConstant*: LONGINT
+		END;
+
+		DCB* = RECORD [NOTAG]
+			DCBlength*, BaudRate*: LONGINT; flags*: SET;
+			wReserved*, XonLim*, XoffLim*: INTEGER;
+			ByteSize*, Parity*, StopBits*, XonChar*, XoffChar*, ErrorChar*, EofChar*, EvtChar*: CHAR;
+			wReserved1*: INTEGER
+		END;
+
+		ComStat* = RECORD [NOTAG]
+			status*: SET;
+			cbInQue*, cbOutQue*: LONGINT
+		END;
+
 	VAR
 		(** The AllocConsole function allocates a new console for the calling process. *)
 		AllocConsole-: PROCEDURE [WINAPI] (): BOOL;
+		(** The ClearCommBreak function restores character transmission for a specified communications device and places the transmission line in a nonbreak state. *)
+		ClearCommBreak-: PROCEDURE [WINAPI] (hFile: HANDLE): BOOL;
+		(** The ClearCommError function retrieves information about a communications error and reports the current status of a communications device. *)
+		ClearCommError-: PROCEDURE [WINAPI] (hFile: HANDLE; VAR lpErrors: SET; VAR lpStat: ComStat): BOOL;
 		(** The CloseHandle function closes an open object handle. *)
 		CloseHandle-: PROCEDURE [WINAPI] (hObject: HANDLE): BOOL;
 		(** The CopyFile function copies an existing file to a new file. *)
@@ -271,6 +337,8 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz *)
 		DuplicateHandle-: PROCEDURE [WINAPI] (hSourceProcessHandle, hSourceHandle, hTargetProcessHandle: HANDLE; VAR lpTargetHandle: HANDLE; dwDesiredAccess: SET; bInheritHandle: BOOL; dwOptions: SET): BOOL;
 		(** The EnterCriticalSection function waits for ownership of the specified critical section object. *)
 		EnterCriticalSection-: PROCEDURE [WINAPI] (VAR lpCriticalSection: CriticalSection);
+		(** The EscapeCommFunction function directs a specified communications device to perform an extended function. *)
+		EscapeCommFunction-: PROCEDURE [WINAPI] (hFile: HANDLE; dwFunc: LONGINT): BOOL;
 		(** The ExitProcess function ends a process and all its threads. *)
 		ExitProcess-: PROCEDURE [WINAPI] (uExitCode: LONGINT);
 		(** The ExitThread function ends a thread. *)
@@ -295,6 +363,10 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz *)
 		FreeLibrary-: PROCEDURE [WINAPI] (hLibModule: HMODULE): BOOL;
 		(** The GetCommandLine function returns a pointer to the command-line string for the current process. *)
 		GetCommandLine-: PROCEDURE [WINAPI] (): LPSTR;
+		(** The GetCommModemStatus function retrieves modem control-register values. *)
+		GetCommModemStatus-: PROCEDURE [WINAPI] (hFile: HANDLE; VAR lpModemStat: SET): BOOL;
+		(** The GetCommState function retrieves the current control settings for a specified communications device. *)
+		GetCommState-: PROCEDURE [WINAPI] (hFile: HANDLE; VAR lpDCB: DCB): BOOL;
 		(** The GetComputerName function retrieves the NetBIOS name of the local computer. *)
 		GetComputerName-: PROCEDURE [WINAPI] (VAR lpBuffer: ARRAY [NOTAG] OF CHAR; VAR lpnSize: LONGINT): BOOL;
 		(** The GetCurrentDirectory function retrieves the current directory for the current process. *)
@@ -397,6 +469,10 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz *)
 		MoveFileEx-: PROCEDURE [WINAPI] (lpExistingFileName, lpNewFileName: ARRAY [NOTAG] OF CHAR; dwFlags: SET): BOOL;
 		(** The OutputDebugString function sends a string to the debugger for the current application. *)
 		outputDebugString-: PROCEDURE [WINAPI] (lpOutputString: ARRAY [NOTAG] OF CHAR);
+		(** The PurgeComm function discards all characters from the output or input buffer of a specified communications resource. *)
+		PurgeComm-: PROCEDURE [WINAPI] (hFile: HANDLE; dwFlags: SET): BOOL;
+		(** The QueryDosDevice function retrieves information about MS-DOS device names. *)
+		QueryDosDevice-: PROCEDURE [WINAPI] (lpDeviceName: ARRAY [NOTAG] OF CHAR; VAR lpTargetPath: ARRAY [NOTAG] OF CHAR; ucchMax: LONGINT): LONGINT;
 		(** The QueryPerformanceCounter function retrieves the current value of the high-resolution
 			performance counter, if one exists. *)
 		QueryPerformanceCounter-: PROCEDURE [WINAPI] (VAR lpPerformaceCount: LargeInteger): BOOL;
@@ -415,6 +491,14 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz *)
 		ResumeThread-: PROCEDURE [WINAPI] (hThread: HANDLE): LONGINT;
 		(** The SearchPath function searches for the specified file. *)
 		SearchPath-: PROCEDURE [WINAPI] (lpPath, lpFileName, lpExtension: ARRAY [NOTAG] OF CHAR; nBufferLength: LONGINT; VAR lpBuffer: ARRAY [NOTAG] OF CHAR; VAR lpFilePart: LPSTR): LONGINT;
+		(** The SetCommBreak function suspends character transmission for a specified communications device and places the transmission line in a break state until the ClearCommBreak function is called. *)
+		SetCommBreak-: PROCEDURE [WINAPI] (hFile: HANDLE): BOOL;
+		(** The SetCommMask function specifies a set of events to be monitored for a communications device. *)
+		SetCommMask-: PROCEDURE [WINAPI] (hFile: HANDLE; dwEvtMask: SET): BOOL;
+		(** The SetCommState function configures a communications device according to the specifications in a device-control block (a DCB structure)*)
+		SetCommState-: PROCEDURE [WINAPI] (hFile: HANDLE; VAR lpDCB: DCB): BOOL;
+		(** The SetCommTimeouts function sets the time-out parameters for all read and write operations on a specified communications device. *)
+		SetCommTimeouts-: PROCEDURE [WINAPI] (hFile: HANDLE; VAR lpCommTimeouts: CommTimeouts): BOOL;
 		(** The SetConsoleScreenBufferSize function changes the size of the specified console screen buffer. *)
 		SetConsoleScreenBufferSize-: PROCEDURE [WINAPI] (hConsoleOuput: HANDLE; dwSize: LONGINT): BOOL;
 		(** The SetConsoleTitle function sets the title bar string for the current console window. *)
@@ -440,6 +524,8 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz *)
 		SetThreadContext-: PROCEDURE [WINAPI] (hThread: HANDLE; lpContext: Context): BOOL;
 		(** The SetThreadPriority function sets the priority value for the specified thread. *)
 		SetThreadPriority-: PROCEDURE [WINAPI] (hThread: HANDLE; nPriority: LONGINT): BOOL;
+		(** The SetupComm function initializes the communications parameters for a specified communications device. *)
+		SetupComm-: PROCEDURE [WINAPI] (hFile: HANDLE; dwInQueue, dwOutQueue: LONGINT): BOOL;
 		(** The Sleep function suspends the execution of the current thread for a specified interval. *)
 		Sleep-: PROCEDURE [WINAPI] (dwMilliseconds: LONGINT);
 		(** The SuspendThread function suspends the specified thread. *)
@@ -492,29 +578,19 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz *)
 	END CopyString;
 
 	(* get the currently installed execption frame *)
-	PROCEDURE - GetCur 64H, 8BH, 0DH, 0, 0, 0, 0; (* MOV ECX, FS:[0] *)
-	PROCEDURE GetCurrent(): ExcpFrmPtr;
-		VAR cur: ExcpFrmPtr;
-	BEGIN
-		GetCur;
-		SYSTEM.GETREG(SYSTEM.ECX, cur); (* RETURN ECX *)
-		RETURN cur
-	END GetCurrent;
+	PROCEDURE - GetCurrent* 64H, 8BH, 05H, 0, 0, 0, 0; (* MOV EAX, FS:[0] *)
 
 	(* install a new exception frame *)
-	PROCEDURE - SetCur 64H, 0A3H, 0, 0, 0, 0; (* MOV FS:[0], EAX *)
-	PROCEDURE SetCurrent(cur: ExcpFrmPtr);
-	BEGIN
-		SYSTEM.PUTREG(SYSTEM.EAX, cur); (* EAX := cur *)
-		SetCur
-	END SetCurrent;
+	PROCEDURE - SetCurrent* 64H, 0A3H, 0, 0, 0, 0; (* MOV FS:[0], EAX *)
 
 	(** Installs a new new exception frame, note that the exception frame should be
 		allocated on the stack of the calling thread. *)
 	PROCEDURE [WINAPI] InstallExcpFrm*(VAR e: ExcpFrm);
 	BEGIN (* ASSERT e is on stack of caller *)
-		e.link := GetCurrent();
-		SetCurrent(SYSTEM.VAL(ExcpFrmPtr, SYSTEM.ADR(e)))
+		GetCurrent;
+		SYSTEM.GETREG(SYSTEM.EAX, e.link);
+		SYSTEM.PUTREG(SYSTEM.EAX, SYSTEM.ADR(e));
+		SetCurrent
 	END InstallExcpFrm;
 
 	PROCEDURE [WINAPI] *EmptyExcpFrmHandler(VAR excpRec: ExceptionRecord; excpFrame: ExcpFrmPtr; VAR context: Context; dispatch: LONGINT): LONGINT;

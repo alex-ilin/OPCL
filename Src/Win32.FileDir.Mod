@@ -1,4 +1,5 @@
-(* Copyright (c) 1994 - 2000 Emil J. Zeller *)
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz *)
 	IMPORT SYSTEM, Kernel32, Kernel, Registry;
@@ -27,7 +28,7 @@ MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz *)
 		PathChar-: CHAR; (** directory separator *)
 		moduleCS: Kernel32.CriticalSection;
 
-(** Replace all occurences of character from in name by to. *)
+ (** Replace all occurences of character from in name by to. *)
 	PROCEDURE ConvertChar*(VAR name: ARRAY OF CHAR; from, to: CHAR);
 		VAR i: LONGINT;
 	BEGIN
@@ -38,8 +39,8 @@ MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz *)
 		END
 	END ConvertChar;
 
-(** Search the (relative) filename name in the current directory. If it could not be found all directories in the search path
-are searched for name. fileName returns the full (absolute) name for the file found. *)
+ (** Search the (relative) filename name in the current directory. If it could not be found all directories in the search path
+ 	are searched for name. fileName returns the full (absolute) name for the file found. *)
 	PROCEDURE FindFile*(name: ARRAY OF CHAR; VAR fullname: ARRAY OF CHAR; usepath: BOOLEAN): BOOLEAN;
 		VAR ret: LONGINT; fileName: Kernel32.LPSTR;
 	BEGIN
@@ -87,8 +88,10 @@ are searched for name. fileName returns the full (absolute) name for the file fo
 			WHILE (ch # 0X) & ok DO
 				IF ch = ":" THEN
 					IF stream THEN ok := FALSE ELSE stream := TRUE END
-				ELSIF ~( ((CAP(ch) >= "A") & (CAP(ch) <= "Z")) OR ((ch >= "0") & (ch <= "9")) OR
-						(ch = ".") OR (ch = "_") OR (ch = "-") ) THEN ok := FALSE
+				(* ELSIF ~( ((CAP(ch) >= "A") & (CAP(ch) <= "Z")) OR ((ch >= "0") & (ch <= "9")) OR
+						(ch = ".") OR (ch = "_") OR (ch = "-") ) THEN ok := FALSE *)
+				ELSIF (ch = pathChar) OR (ch = WinPathChar) THEN
+					ok := FALSE
 				END;
 				INC(i); ch := fullName[i]
 			END
@@ -109,7 +112,7 @@ are searched for name. fileName returns the full (absolute) name for the file fo
 		RETURN (a[i] = 0X) & (b[j] = 0X)
 	END SameName;
 
-(** Compute the relative filename (relative to the working directory). *)
+ (** Compute the relative filename (relative to the working directory). *)
 	PROCEDURE RelFileName*(fileName: ARRAY OF CHAR; VAR relFileName: ARRAY OF CHAR);
 		VAR
 			i, j, k, p: LONGINT;
@@ -191,9 +194,7 @@ are searched for name. fileName returns the full (absolute) name for the file fo
 	PROCEDURE CreateDirectory*(path: ARRAY OF CHAR; VAR done: BOOLEAN);
 	BEGIN
 		ConvertChar(path, pathChar, WinPathChar);
-		Kernel32.EnterCriticalSection(moduleCS);
-		done := Kernel32.CreateDirectory(path, NIL) # Kernel32.False;
-		Kernel32.LeaveCriticalSection(moduleCS)
+		done := Kernel32.CreateDirectory(path, NIL) # Kernel32.False
 	END CreateDirectory;
 
 (** Delete directory path. *)
@@ -246,7 +247,6 @@ must be calculated. When
 				ft: Kernel32.FileTime; st: Kernel32.SystemTime;
 				i, j, t, d: LONGINT;
 		BEGIN
-			Kernel32.LeaveCriticalSection(moduleCS);
 			i := 0; WHILE curPath[i] # 0X DO INC(i) END;
 			IF curPath[i-1] # WinPathChar THEN
 				curPath[i] := WinPathChar; INC(i); curPath[i] := 0X
@@ -294,16 +294,20 @@ must be calculated. When
 					END;
 				UNTIL Kernel32.FindNextFile(h, FD) = Kernel32.False;
 				Kernel32.FindClose(h)
-			END;
-			Kernel32.EnterCriticalSection(moduleCS)
+			END
 		END EnumeratePath;
 	BEGIN
 		IF enum = NIL THEN RETURN END;
-		Kernel32.EnterCriticalSection(moduleCS);
 		IF path = "." THEN
-			COPY(workPath, curPath); EnumeratePath()
+			Kernel32.EnterCriticalSection(moduleCS);
+			COPY(workPath, curPath);
+			Kernel32.LeaveCriticalSection(moduleCS);
+			EnumeratePath()
 		ELSIF path = "" THEN
-			COPY(workPath, curPath); EnumeratePath();
+			Kernel32.EnterCriticalSection(moduleCS);
+			COPY(workPath, curPath);
+			Kernel32.LeaveCriticalSection(moduleCS);
+			EnumeratePath();
 			i := 0; j := 0;
 			WHILE searchPath[i] # 0X DO
 				IF searchPath[i] # ";" THEN
@@ -319,8 +323,7 @@ must be calculated. When
 		ELSE
 			COPY(path, curPath); ConvertChar(curPath, pathChar, WinPathChar);
 			EnumeratePath()
-		END;
-		Kernel32.LeaveCriticalSection(moduleCS)
+		END
 	END EnumerateFiles;
 
 (** Enumerates all paths in Oberons search-path. *)

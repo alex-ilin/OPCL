@@ -1,12 +1,17 @@
-(* Copyright (c) 1994 - 2000 Emil J. Zeller *)
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE Files; (** portable, except where noted / source: Win32.Files.Mod *)	(* ejz *)
-	IMPORT SYSTEM, Kernel32, Kernel, FileDir;
+	IMPORT SYSTEM, Kernel32, Kernel, FileDir, AosIO;
 
 (** The Files module provided access to the file system of the host operating system by simulating an Oberon-like file system. *)
 
 	CONST
 		BufSize = 4*1024; MaxBufs = 4; WinPathChar = "\";
+		WriteError = 2907;
+
+		DefaultWriterSize = 4096;
+		DefaultReaderSize = 4096;
 
 	TYPE
 		Buffer = POINTER TO RECORD
@@ -28,6 +33,60 @@ MODULE Files; (** portable, except where noted / source: Win32.Files.Mod *)	(* e
 			res*, org, offset: LONGINT; (** Rider operation result code. *)
 			eof*: BOOLEAN (** Rider has reached the end of the file. *)
 		END;
+
+	TYPE
+		Writer* = OBJECT (AosIO.Writer)
+			VAR r: Rider;
+
+			PROCEDURE Send(VAR buf: ARRAY OF CHAR;  ofs, len: LONGINT;  propagate: BOOLEAN;  VAR res: LONGINT);
+				VAR shiftedbuf: POINTER TO ARRAY OF CHAR; i : LONGINT;
+			BEGIN
+				(*WriteBytes(r, buf, ofs, len);*)
+				IF ofs = 0 THEN
+					WriteBytes(r, buf,  len);
+				ELSE
+					NEW(shiftedbuf, len);
+					FOR i := 0 TO len - 1 DO
+						shiftedbuf[i] := buf[i + ofs];
+					END;
+					WriteBytes(r, shiftedbuf^,  len);
+				END;
+				IF propagate THEN Close(r.F) ;END;
+				IF r.res = 0 THEN res := AosIO.Ok ELSE res := WriteError (* not all bytes written *)END
+			END Send;
+
+			PROCEDURE &InitFileWriter(f: File;  pos: LONGINT);
+			BEGIN
+				FilesSet(r, f,pos);
+				InitWriter(SELF.Send, DefaultWriterSize)
+			END InitFileWriter;
+		END Writer;
+
+		Reader* = OBJECT (AosIO.Reader)
+			VAR r: Rider;
+
+			PROCEDURE Receive(VAR buf: ARRAY OF CHAR;  ofs, size, min: LONGINT;  VAR len, res: LONGINT);
+				VAR shiftedbuf: POINTER TO ARRAY OF CHAR; i : LONGINT;
+			BEGIN
+				IF ofs = 0 THEN
+					ReadBytes(r, buf,  size);
+				ELSE
+					NEW(shiftedbuf, size);
+					ReadBytes(r, shiftedbuf^,  size);
+					FOR i := 0 TO size - 1 DO
+						buf[i + ofs] := shiftedbuf[i];
+					END;
+				END;
+				len := size - r.res;
+				IF len >= min THEN res := AosIO.Ok ELSE res := AosIO.EOF (* end of file *)END
+			END Receive;
+
+			PROCEDURE &InitFileReader(f: File;  pos: LONGINT);
+			BEGIN
+				Set(r, f,pos);
+				InitReader(SELF.Receive, DefaultReaderSize)
+			END InitFileReader;
+		END Reader;
 
 	VAR
 		OpenFlags, NewFlags, GenericReadWrite, ShareReadWrite: SET;
@@ -176,7 +235,7 @@ MODULE Files; (** portable, except where noted / source: Win32.Files.Mod *)	(* e
 		HALT(99)
 	END Error;
 
-	PROCEDURE WriteBuf(F: File; buf: Buffer);
+	PROCEDURE WriteBuf(F: File; buf: Buffer; VAR res: LONGINT);
 		VAR nWr: LONGINT;
 	BEGIN
 		IF buf.dirty & (buf.size > 0) THEN
@@ -184,16 +243,16 @@ MODULE Files; (** portable, except where noted / source: Win32.Files.Mod *)	(* e
 			IF (Kernel32.WriteFile(F.handle, buf.data, buf.size, nWr, NIL) = Kernel32.False) OR (nWr # buf.size) THEN
 				ReOpen(F);
 				IF (Kernel32.WriteFile(F.handle, buf.data, buf.size, nWr, NIL) = Kernel32.False) OR (nWr # buf.size) THEN
-					Error(FALSE)
+					(*Error(FALSE)*) res := 1; RETURN
 				END
 			END;
 			IF (buf.org+buf.size) > F.len THEN F.len := buf.org+buf.size END;
 			INC(F.pos, nWr)
 		END;
-		buf.dirty := FALSE
+		buf.dirty := FALSE; res := 0
 	END WriteBuf;
 
-	PROCEDURE ReadBuf(F: File; buf: Buffer);
+	PROCEDURE ReadBuf(F: File; buf: Buffer; VAR res : LONGINT);
 		VAR nRe: LONGINT;
 	BEGIN
 		IF (buf.org+BufSize) > F.len THEN
@@ -205,7 +264,7 @@ MODULE Files; (** portable, except where noted / source: Win32.Files.Mod *)	(* e
 			IF F.pos # buf.org THEN F.pos := Kernel32.SetFilePointer(F.handle, buf.org, NIL, Kernel32.FileBegin) END;
 			IF (Kernel32.ReadFile(F.handle, buf.data, buf.size, nRe, NIL) = Kernel32.False) OR (nRe # buf.size) THEN
 				IF F.handle # Kernel32.InvalidHandleValue THEN
-					Error(FALSE)
+					(*Error(FALSE)*) res := 1; RETURN
 				ELSE
 				(* reading garbage *)
 				END
@@ -214,7 +273,7 @@ MODULE Files; (** portable, except where noted / source: Win32.Files.Mod *)	(* e
 		ELSE
 			buf.size := 0
 		END;
-		buf.dirty := FALSE
+		buf.dirty := FALSE; res := 0
 	END ReadBuf;
 
 (** Positions a Rider at a certain position in a file. Multiple Riders can be positioned at different locations in a file. A Rider
@@ -238,7 +297,9 @@ IF pos > F.len THEN pos := F.len ELSIF pos < 0 THEN pos := 0 END;
 						INC(i)
 					END;
 					IF (i < MaxBufs) & (F.bufs[i] # NIL) THEN (* sequential read *)
-						buf := F.bufs[i]; WriteBuf(F, buf); F.swap := i
+						buf := F.bufs[i]; WriteBuf(F, buf, R.res);
+						IF R.res # 0 THEN RETURN END;
+						F.swap := i
 					ELSE
 						NEW(buf); F.bufs[i] := buf; buf.dirty := FALSE;
 						buf.org := -1; buf.size := 0
@@ -246,12 +307,14 @@ IF pos > F.len THEN pos := F.len ELSIF pos < 0 THEN pos := 0 END;
 				END
 			ELSE
 				F.swap := (F.swap+1) MOD MaxBufs;
-				buf := F.bufs[F.swap]; WriteBuf(F, buf)
+				buf := F.bufs[F.swap]; WriteBuf(F, buf, R.res);
+				IF R.res # 0 THEN RETURN END
 			END;
 			IF buf.org # org THEN
 				buf.org := org;
 				IF org < F.len THEN
-					ReadBuf(F, buf)
+					ReadBuf(F, buf, R.res);
+					IF R.res # 0 THEN RETURN END
 				ELSE
 					buf.size := 0
 				END
@@ -262,6 +325,11 @@ IF pos > F.len THEN pos := F.len ELSIF pos < 0 THEN pos := 0 END;
 		R.F := F; R.buf := buf; R.org := org; R.offset := offset;
 		R.eof := FALSE; R.res := 0
 	END Set;
+
+	PROCEDURE FilesSet(VAR R: Rider; F: File; pos: LONGINT);
+	BEGIN
+		Set(R, F, pos)
+	END FilesSet;
 
 (** Returns the File a Rider is based on. *)
 	PROCEDURE Base*(VAR R: Rider): File;
@@ -319,11 +387,11 @@ IF pos > F.len THEN pos := F.len ELSIF pos < 0 THEN pos := 0 END;
 (** Flushes the changes made to a file to disk. Register will automatically Close a file.
 		Note: Close will only do a flush, the file is closed by the GC! *)
 	PROCEDURE Close*(F: File);
-		VAR i: LONGINT;
+		VAR i, res: LONGINT;
 	BEGIN
 		i := 0;
 		WHILE (i < MaxBufs) & (F.bufs[i] # NIL) DO
-			WriteBuf(F, F.bufs[i]); INC(i)
+			WriteBuf(F, F.bufs[i], res); INC(i)
 		END;
 		Kernel32.FlushFileBuffers(F.handle)
 	END Close;
@@ -541,11 +609,13 @@ IF pos > F.len THEN pos := F.len ELSIF pos < 0 THEN pos := 0 END;
 
 (** Reads a number in compressed variable length notation using the minimum amount of bytes. *)
 	PROCEDURE ReadNum*(VAR R: Rider; VAR x: LONGINT);
-		VAR n: LONGINT; s: SHORTINT; ch: CHAR;
+		VAR ch: CHAR; n, y: LONGINT;
 	BEGIN
-		s := 0; n := 0; Read(R, ch);
-		WHILE ORD(ch) >= 128 DO INC(n, ASH(ORD(ch) - 128, s) ); INC(s, 7); Read(R, ch) END;
-		x := n + ASH(ORD(ch) MOD 64 - ORD(ch) DIV 64 * 64, s)
+		n := 0; y := 0; Read(R, ch);
+		WHILE ch >= 80X DO
+			INC(y, SYSTEM.LSH(LONG(ch) - 128, n)); INC(n, 7); Read(R, ch)
+		END;
+		x := ASH(SYSTEM.LSH(LONG(ch), 25), n-25) + y
 	END ReadNum;
 
 (** Portable routines to write the standard Oberon types. *)
@@ -662,6 +732,16 @@ IF pos > F.len THEN pos := F.len ELSIF pos < 0 THEN pos := 0 END;
 	BEGIN
 		copy(src, dest, FALSE, res)
 	END Copy;
+
+	PROCEDURE OpenReader*(VAR b: Reader;  f: File;  pos: LONGINT);
+	BEGIN
+		NEW(b, f, pos)
+	END OpenReader;
+
+	PROCEDURE OpenWriter*(VAR b: Writer;  f: File;  pos: LONGINT);
+	BEGIN
+		NEW(b, f, pos)
+	END OpenWriter;
 
 	PROCEDURE *Shutdown();
 	BEGIN

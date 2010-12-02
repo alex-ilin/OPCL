@@ -235,7 +235,7 @@ MODULE Registry; (** non-portable / source: Win32.Registry.Mod *)	(* ejz *)
 			buf: POINTER TO ARRAY OF SYSTEM.BYTE; adr: Kernel32.ADDRESS; len, i: LONGINT; ch: CHAR;
 	BEGIN
 		res := Done; stamp := 0;
-		Kernel32.GetModuleFileName(Kernel.hInstance, file, Kernel32.MaxPath);
+		len := Kernel32.GetModuleFileName(Kernel.hInstance, file, Kernel32.MaxPath);
 		len := ADVAPI32.GetFileVersionInfoSize(file, NIL); NEW(buf, len);
 		ADVAPI32.GetFileVersionInfo(file, 0, len, buf^);
 		ADVAPI32.VerQueryValue(buf^, "\StringFileInfo\040904e4\FileDescription", adr, len);

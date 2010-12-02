@@ -1,4 +1,4 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE Modules;	(** portable, except where noted *)	(* rc/mh/jm/tk/ard/rml/prk/pjm *)
@@ -57,8 +57,7 @@ VAR
 		incompImport = 16
 	*)
 	imported, importing: ModuleName;	(* Specifies the modules involved in a key mismatch. *)
-
-	moduleCS: Kernel32.CriticalSection; locked: BOOLEAN;
+	moduleCS: Kernel32.CriticalSection;
 
 TYPE
 	Header = RECORD (* data in object file header *)
@@ -170,18 +169,6 @@ BEGIN
 	RETURN SYSTEM.VAL(LONGINT, SYSTEM.VAL(SET, x) * SYSTEM.VAL(SET, y))
 END And;
 
-PROCEDURE ReadString(VAR R: Files.Rider; VAR string: ARRAY OF CHAR);
-	VAR i: INTEGER; ch: CHAR;
-BEGIN
-	i := 0;
-	LOOP
-		Files.Read(R, ch);
-		IF ch = 0X THEN string[i] := 0X; RETURN
-		ELSIF ch > 7FX THEN string[i] := CHR(ORD(ch)-80H); string[i+1] := 0X; RETURN
-		ELSE string[i] := ch; INC(i) END
-	END
-END ReadString;
-
 (*---- module loading ---- *)
 
 PROCEDURE ^Load (name: ARRAY OF CHAR; VAR m: Module);
@@ -287,7 +274,7 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 (*
 				|   250: offs := link[i].link;	(* Start(adr: LONGINT; priority, typ: SHORTINT; self: Object) *)
 						WHILE offs # 0FFFFH DO
-							SYSTEM.GET(codebase + offs, val); SYSTEM.PUT(codebase + offs, Kernel.ModuleData[3] - (codebase + offs + 4));
+							SYSTEM.GET(codebase + offs, val); SYSTEM.PUT(codebase + offs, Kernel.runtime[3] - (codebase + offs + 4));
 							offs := MSW(val);
 						END
 				|   249: offs := link[i].link; 	(* Passivate(adr, ebp: LONGINT) *)
@@ -298,12 +285,12 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 				|   247: offs := link[i].link;	(* Lock *)
 						WHILE offs # 0FFFFH DO
 							SYSTEM.GET(codebase + offs, val);
-							SYSTEM.PUT(codebase + offs, Kernel.ModuleData[6] - (codebase + offs + 4));
+							SYSTEM.PUT(codebase + offs, Kernel.runtime[4] - (codebase + offs + 4));
 							offs := MSW(val);
 						END
 				|   246: offs := link[i].link;	(* Unlock *)
 						WHILE offs # 0FFFFH DO
-							SYSTEM.GET(codebase + offs, val); SYSTEM.PUT(codebase + offs, Kernel.ModuleData[7] - (codebase + offs + 4));
+							SYSTEM.GET(codebase + offs, val); SYSTEM.PUT(codebase + offs, Kernel.runtime[5] - (codebase + offs + 4));
 							offs := MSW(val);
 						END
 *)
@@ -386,7 +373,7 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 						CheckScope(scope.dsc[i], EUrecScope)
 					END
 				ELSE
-					ReadString(R, name);
+					Files.ReadString(R, name);
 					IF level >= EUobjScope THEN tmpErr := FALSE;
 						IF level = EUobjScope THEN Files.ReadNum(R, link) END;
 						i := 0;
@@ -410,11 +397,11 @@ PROCEDURE LoadModule (VAR R: Files.Rider; VAR m: Module);
 			END
 		END CheckScope;
 
-	BEGIN ReadString(R, name);
+	BEGIN Files.ReadString(R, name);
 		WHILE (name # "") & (res = 0) DO
 			Load(name, mod);
 			IF res = 0 THEN CheckScope(mod.export, EUobjScope) END;
-			ReadString(R, name)
+			Files.ReadString(R, name)
 		END
 	END CheckUseBlock;
 
@@ -633,7 +620,7 @@ BEGIN (* LoadModule *)
 		NEW(mods, head.nofImps);
 		mno := 0;
 		WHILE (mno < head.nofImps) & (res = done) DO
-			ReadString(R, mods[mno]);
+			Files.ReadString(R, mods[mno]);
 			Load(mods[mno], imp);
 			IF res # done THEN RETURN END;
 			m.imports[mno] := imp; INC(mno)
@@ -699,11 +686,7 @@ BEGIN (* LoadModule *)
 		m.next := Kernel.modules; Kernel.modules := m;
 		m.init := TRUE;
 		SYSTEM.PUT(SYSTEM.ADR(body), SYSTEM.ADR(m.code[0]));
-		ASSERT(locked); locked := FALSE;
-		Kernel32.LeaveCriticalSection(moduleCS);
 		body;
-		Kernel32.EnterCriticalSection(moduleCS);
-		ASSERT(~locked); locked := TRUE;
 		res := done	(* body may contain failing call to Modules *)
 	ELSE m := NIL
 	END
@@ -744,6 +727,7 @@ BEGIN
 		Files.Set(R, f, 0); Files.Read(R, tag);
 		IF tag = 0BBX THEN
 			Files.Read(R, tag);
+			IF tag = 0ADX THEN Files.Read(R, tag) END;	(* no zero compression in symbol file *)
 			IF (tag = ActiveTag) THEN
 				LoadModule(R, m)
 			ELSE COPY(name, importing); res := invalidObjFile; ErrMsg(res)
@@ -757,13 +741,11 @@ END Load;
 (** Returns a handle to an already loaded module, or if not loaded, loads the module and all its imported modules. *)
 
 PROCEDURE ThisMod* (name: ARRAY OF CHAR): Module;
-	VAR mod: Module;
+	VAR excp: Kernel.ExcpFrm; mod: Module;
 BEGIN
-	Kernel32.EnterCriticalSection(moduleCS);
-	ASSERT(~locked); locked := TRUE;
+	excp.panic := FALSE; Kernel.LockAndTry(moduleCS, excp);
 	Load(name, mod);
-	ASSERT(locked); locked := FALSE;
-	Kernel32.LeaveCriticalSection(moduleCS);
+	Kernel.UnlockAndUnwind(moduleCS, excp);
 	RETURN mod
 END ThisMod;
 
@@ -771,17 +753,20 @@ END ThisMod;
 Calling this procedure executes the command. *)
 
 PROCEDURE ThisCommand* (mod: Module; name: ARRAY OF CHAR): Command;
-	VAR i: LONGINT;
+	VAR i: LONGINT; cmd: Command;
 BEGIN
 	IF mod # NIL THEN
+		Kernel32.EnterCriticalSection(moduleCS);
 		i := LEN(mod.cmds);
 		WHILE i > 0 DO DEC(i);
 			IF mod.cmds[i].name = name THEN
-				res := done;  Clear;
-				RETURN SYSTEM.VAL(Command, mod.cmds[i].adr)
+				res := done;  Clear; cmd := SYSTEM.VAL(Command, mod.cmds[i].adr);
+				Kernel32.LeaveCriticalSection(moduleCS);
+				RETURN cmd
 			END
 		END;
-		COPY(mod.name, imported);  COPY(name, importing); res := cmdNotFound; ErrMsg(res)
+		COPY(mod.name, imported);  COPY(name, importing); res := cmdNotFound; ErrMsg(res);
+		Kernel32.LeaveCriticalSection(moduleCS)
 	END;
 	RETURN NIL
 END ThisCommand;
@@ -800,20 +785,15 @@ END Delete;
 
 (** Free a module from memory. Only modules with no clients can be freed. The all flag requests that all imported modules should be freed too (i.e. a recursive call to Free). *)
 PROCEDURE Free* (name: ARRAY OF CHAR; all: BOOLEAN);
-	VAR m, m1: Module; i, j: LONGINT;
+	VAR excp: Kernel.ExcpFrm; m, m1: Module; i, j: LONGINT;
 BEGIN
-	Kernel32.EnterCriticalSection(moduleCS);
-	ASSERT(~locked); locked := TRUE;
+	excp.panic := FALSE; Kernel.LockAndTry(moduleCS, excp);
 	res := done;  Clear;
 	m := FindMod(name);
 	IF m = NIL THEN COPY(name, importing); res := moduleNotFound; ErrMsg(res)
 	ELSIF m.refcnt # 0 THEN importing := m.name; res := refCntNotZero; ErrMsg(res)
 	ELSE
-		ASSERT(locked); locked := FALSE;
-		Kernel32.LeaveCriticalSection(moduleCS);
 		Kernel.FinalizeModule(m);
-		Kernel32.EnterCriticalSection(moduleCS);
-		ASSERT(~locked); locked := TRUE;
 		i := LEN(m.imports);
 		WHILE i > 0 DO DEC(i); m1 := m.imports[i]; DEC(m1.refcnt) END;
 		IF all THEN i := LEN(m.imports);
@@ -828,8 +808,7 @@ BEGIN
 		j := i + j-24;	(* end of sysblk *)
 		WHILE i < j DO SYSTEM.PUT32(i, 0CCCCCCCCH);  INC(i, 4) END	(* clear *)
 	END;
-	ASSERT(locked); locked := FALSE;
-	Kernel32.LeaveCriticalSection(moduleCS)
+	Kernel.UnlockAndUnwind(moduleCS, excp)
 END Free;
 
 (** InstallTermHandler - Install a procedure to execute when a module is freed.
@@ -837,7 +816,9 @@ Never perform upcalls in the installed procedure! *)
 
 PROCEDURE InstallTermHandler*(h: Kernel.Proc);
 BEGIN
-	Kernel.InstallTermHandler(h)
+	Kernel32.EnterCriticalSection(moduleCS);
+	Kernel.InstallTermHandler(h);
+	Kernel32.LeaveCriticalSection(moduleCS)
 END InstallTermHandler;
 
 PROCEDURE *Shutdown();
@@ -849,7 +830,7 @@ BEGIN
 	Kernel32.InitializeCriticalSection(moduleCS); InstallTermHandler(Shutdown);
 	Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "ModExt", extension);
 	IF Registry.res # Registry.Done THEN extension := "" END;
-	IF extension = "" THEN extension := ".Obj" END; locked := FALSE
+	IF extension = "" THEN extension := ".Obj" END
 END Modules.
 
 (** Remarks:

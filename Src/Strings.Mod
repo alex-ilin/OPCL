@@ -1,4 +1,5 @@
-(* Copyright (c) 1994 - 2000 Emil J. Zeller *)
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE Strings; (** portable *)	(* ejz *)
 
@@ -864,7 +865,7 @@ END StrToReal;
 		FOR i := 0 TO 255 DO
 			ISOToOberon[i] := CHR(i); OberonToISO[i] := CHR(i)
 		END;
-		ISOToOberon[8] := CHR(127);
+		(* ISOToOberon[8] := CHR(127); *)
 		ISOToOberon[146] := CHR(39);
 		ISOToOberon[160] := CHR(32);
 		ISOToOberon[162] := CHR(99);

@@ -263,7 +263,7 @@ MODULE Exceptions; (** non-portable / source: Win32.Exceptions.Mod *)	(* ejz *)
 				END
 			END;
 			lastfp := fp;
-			SYSTEM.GET(fp+4, pc);  SYSTEM.GET(fp, fp); (* return addr from stack *)
+			SYSTEM.GET(fp+4, pc); SYSTEM.GET(fp, fp); (* return addr from stack *)
 			IF (fp < lastfp) OR (fp >= e.t.stackBottom) THEN RETURN Abort END; (* not called from stack *)
 			mod := Kernel.GetMod(pc)
 		END
@@ -293,7 +293,7 @@ MODULE Exceptions; (** non-portable / source: Win32.Exceptions.Mod *)	(* ejz *)
 				Kernel32.Ln()
 			END;
 			lastfp := fp;
-			SYSTEM.GET(fp+4, pc);  SYSTEM.GET(fp, fp); (* return addr from stack *)
+			SYSTEM.GET(fp+4, pc); SYSTEM.GET(fp, fp); (* return addr from stack *)
 			IF (fp < lastfp) OR (fp >= stackBottom) THEN EXIT END; (* not called from stack *)
 			mod := Kernel.GetMod(pc)
 		END;

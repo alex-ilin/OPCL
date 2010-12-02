@@ -1,7 +1,7 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
-MODULE Kernel;	(** non-portable *)	(* rc/ard/nm/jm/jdv/pjm/rml/ejz *)
+MODULE Kernel;	(** non-portable / source: Win32.Kernel.Mod *)	(* rc/ard/nm/jm/jdv/pjm/rml/ejz *)
 	IMPORT SYSTEM, Kernel32;
 
 (** Module Kernel is responsible for memory allocation, garbage collection and other run-time support for the Oberon language, as well as interfacing to the underlying machine.  Using features exported from module Kernel may result in an unportable module, as not all Oberon Kernels are the same. This module is of little importance to most Oberon programmers. *)
@@ -15,7 +15,7 @@ CONST
 	mark = {MarkBit}; array = {ArrayBit};  free = {FreeBit};  subobj = {SubObjBit};
 
 		(* Windows *)
-	HeapBlockSize = 512*1024;
+	HeapBlockSize = 16*1024*1024;
 
 TYPE
 	ADDRESS = Kernel32.ADDRESS;
@@ -89,6 +89,16 @@ TYPE
 		firstBlock, endBlock: (*FreeBlockPtr*) ADDRESS
 	END;
 
+	PCriticalSection = POINTER TO Kernel32.CriticalSection;
+
+	ExcpFrm* = RECORD [NOTAG]
+		excpFrm: Kernel32.ExcpFrm;
+		pCS[UNTRACED]: PCriticalSection;
+		panic*: BOOLEAN
+	END;
+
+	ExcpFrmPtr = POINTER TO ExcpFrm;
+
 VAR
 		(* exported variables *)
 	version*: ARRAY 32 OF CHAR;
@@ -111,13 +121,48 @@ VAR
 	EndAtomic*: PROCEDURE ();
 	moduleCS: Kernel32.CriticalSection;
 	hInstance-: Kernel32.HINSTANCE; (* init by linker/loader *)
-	isEXE-: BOOLEAN; lock*: LONGINT;
+	lock*: LONGINT;
 	firstHeapBlock: (*HeapBlock*)ADDRESS;
 	bootHeapBlockDesc: HeapBlockDesc;
 	bootHeapAdr, bootHeapSize: ADDRESS; (* init by linker/loader *)
 	minHeapAdr, maxHeapAdr: ADDRESS;
+	inShutdown, isEXE-: BOOLEAN;
 
 (** -- Trap handling -- *)
+
+	PROCEDURE [WINAPI] *ExcpFrmHandler(VAR excpRec: Kernel32.ExceptionRecord; excpFrame: Kernel32.ExcpFrmPtr; VAR context: Kernel32.Context; dispatch: LONGINT): LONGINT;
+		VAR p: ExcpFrmPtr;
+	BEGIN
+		p := SYSTEM.VAL(ExcpFrmPtr, excpFrame);
+		IF p.pCS # NIL THEN
+			Kernel32.LeaveCriticalSection(p.pCS^)
+		END;
+		SYSTEM.PUTREG(SYSTEM.EAX, SYSTEM.GET32(excpFrame+0)); (* link at offset 0 *)
+		Kernel32.SetCurrent;
+		IF p.panic THEN
+			Kernel32.Str("KERNEL PANIC"); Kernel32.Ln();
+			Kernel32.ExitProcess(1)
+		END;
+		RETURN Kernel32.ExceptionExecuteHandler
+	END ExcpFrmHandler;
+
+	PROCEDURE LockAndTry*(VAR cs: Kernel32.CriticalSection; VAR excp: ExcpFrm);
+	BEGIN
+		Kernel32.EnterCriticalSection(cs);
+		excp.pCS := SYSTEM.VAL(PCriticalSection, SYSTEM.ADR(cs));
+		Kernel32.GetCurrent;
+		SYSTEM.GETREG(SYSTEM.EAX, excp.excpFrm.link);
+		excp.excpFrm.handler := ExcpFrmHandler;
+		SYSTEM.PUTREG(SYSTEM.EAX, SYSTEM.ADR(excp.excpFrm));
+		Kernel32.SetCurrent
+	END LockAndTry;
+
+	PROCEDURE UnlockAndUnwind*(VAR cs: Kernel32.CriticalSection; VAR excp: ExcpFrm);
+	BEGIN
+		SYSTEM.PUTREG(SYSTEM.EAX, excp.excpFrm.link);
+		Kernel32.SetCurrent;
+		Kernel32.LeaveCriticalSection(cs)
+	END UnlockAndUnwind;
 
 (** GetMod - Return the loaded module that contains code address pc. *)
 
@@ -460,12 +505,11 @@ END FinalizeObjs;
 
 (** GC - Immediately activate the garbage collector. *)
 
-PROCEDURE ^NewSys(VAR p: ADDRESS; size: LONGINT);
-
 PROCEDURE GC*;
-	VAR m: Module; i, p, ptradr: LONGINT; ptr: BlockPtr;
+	VAR excp: ExcpFrm; m: Module; i, p, ptradr: LONGINT; ptr: BlockPtr;
 BEGIN
 	IF (GClevel > 0) & BeginAtomic() THEN
+		excp.panic := TRUE; LockAndTry(moduleCS, excp);
 		m := modules;	(* ModuleDesc and ModuleBlock are marked via Kernel.modules *)
 		WHILE m # NIL DO
 			Mark(SYSTEM.VAL(BlockPtr, m));	(* the code, data etc. is marked via fields of m *)
@@ -487,8 +531,10 @@ BEGIN
 		IF nofcand > 0 THEN CheckCandidates END;
 		CheckFinObjs;
 		Sweep;
+		EndAtomic();
+		excp.panic := FALSE;
 		FinalizeObjs;
-		EndAtomic()
+		UnlockAndUnwind(moduleCS, excp)
 	END
 END GC;
 
@@ -529,8 +575,9 @@ END NewHeapBlock;
 PROCEDURE NewBlock(size: LONGINT): InitPtr;	(* size MOD B = 0 *)
 	VAR i, rest: LONGINT; adr, AN: ADDRESS; ptr: InitPtr; restptr: FreeBlockPtr;
 BEGIN
-	IF size < 0 (* NEW(p, MAX(LONGINT)) *) THEN SYSTEM.HALT(14) END;
-	Kernel32.EnterCriticalSection(moduleCS);
+	IF size < 0 (* NEW(p, MAX(LONGINT)) *) THEN
+		Kernel32.LeaveCriticalSection(moduleCS); SYSTEM.HALT(14)
+	END;
 	i := size DIV B;
 	IF i > N THEN i := N END;
 	adr := SYSTEM.ADR(A[0]) + 4*i;
@@ -547,7 +594,6 @@ BEGIN
 						NewHeapBlock(size)
 					END;
 					ptr := NewBlock(size);
-					Kernel32.LeaveCriticalSection(moduleCS);
 					RETURN ptr
 				END;
 				IF ptr^.z0 + 4 >= size THEN EXIT END;
@@ -569,20 +615,19 @@ BEGIN
 		restptr^.size := rest - 4;
 		restptr^.next := A[i]; A[i] := SYSTEM.VAL(ADDRESS, restptr)
 	END;
-	Kernel32.LeaveCriticalSection(moduleCS);
 	RETURN ptr
 END NewBlock;
 
 (* NewRec - Implementation of NEW.  Do not call directly. *)
 
-PROCEDURE *NewRec(VAR p: ADDRESS; tag: Tag);	(* implementation of NEW(ptr) *)
+PROCEDURE NewRec*(VAR p: ADDRESS; tag: Tag);	(* implementation of NEW(ptr) *)
 	VAR size: LONGINT; ptr, init: InitPtr;
 BEGIN (* tag^.size = rectyp^.size *)
 	ASSERT(SYSTEM.VAL(LONGINT, tag) MOD 8 = 0);	(* no Oberon-X flags allowed *)
+	Kernel32.EnterCriticalSection(moduleCS);
 	IF tag = NIL THEN tag := SYSTEM.VAL(Tag, ptrElemTag) END;	(* descriptor for ARRAY * OF *)
 	size := SYSTEM.VAL(LONGINT, SYSTEM.VAL(SET, tag^.size + (4 (*tag*) + B-1))-SYSTEM.VAL(SET, B-1));
 	ptr := NewBlock(size);
-
 	init := SYSTEM.VAL(InitPtr, SYSTEM.VAL(ADDRESS, ptr) + size - 32);
 	init^.z0 := 0; init^.z1 := 0; init^.z2 := 0; init^.z3 := 0; init^.z4 := 0; init^.z5 := 0; init^.z6 := 0;
 	WHILE init # ptr DO
@@ -590,14 +635,16 @@ BEGIN (* tag^.size = rectyp^.size *)
 		init^.z0 := 0; init^.z1 := 0; init^.z2 := 0; init^.z3 := 0; init^.z4 := 0; init^.z5 := 0; init^.z6 := 0; init^.z7 := 0
 	END;
 	ptr^.tag := tag;
-	p := SYSTEM.VAL(ADDRESS, ptr) + 4
+	p := SYSTEM.VAL(ADDRESS, ptr) + 4;
+	Kernel32.LeaveCriticalSection(moduleCS)
 END NewRec;
 
 (* NewSys - Implementation of SYSTEM.NEW.  Do not call directly. *)
 
-PROCEDURE *NewSys(VAR p: ADDRESS; size: LONGINT);
+PROCEDURE NewSys*(VAR p: ADDRESS; size: LONGINT);
 VAR ptr, init: InitPtr;
 BEGIN
+	Kernel32.EnterCriticalSection(moduleCS);
 	size := SYSTEM.VAL(LONGINT, SYSTEM.VAL(SET, size + (28 + B-1))-SYSTEM.VAL(SET, B-1));
 	ptr := NewBlock(size);
 	init := SYSTEM.VAL(InitPtr, SYSTEM.VAL(ADDRESS, ptr) + size - 32);
@@ -613,26 +660,32 @@ BEGIN
 	init^.z4 := 0;
 	ptr^.z5 := SYSTEM.ADR(ptr^.z0);
 	init^.z6 := 0;
-	p := SYSTEM.VAL(ADDRESS, ptr) + 28
+	p := SYSTEM.VAL(ADDRESS, ptr) + 28;
+	Kernel32.LeaveCriticalSection(moduleCS)
 END NewSys;
 
 (* NewArr - Implementation of NEW.  Do not call directly. *)
 
-PROCEDURE *NewArr(VAR p: ADDRESS; eltag: Tag; nofelem, nofdim: LONGINT);
+PROCEDURE NewArr*(VAR p: ADDRESS; eltag: Tag; nofelem, nofdim: LONGINT);
 VAR size, firstElem, elSize, arrSize, vectSize: LONGINT; ptr, init: InitPtr;
 BEGIN
 	ASSERT(SYSTEM.VAL(LONGINT, eltag) MOD 4 = 0);
+	Kernel32.EnterCriticalSection(moduleCS);
 	IF eltag = NIL THEN
 		eltag := SYSTEM.VAL(Tag, ptrElemTag)	(* array of pointer to *)
 	END;
 	elSize := eltag^.size;
 	arrSize := nofelem*elSize;
-	IF arrSize=0 THEN NewSys(p, nofdim*4+12); RETURN END;
-	ASSERT(arrSize > 0);
+	IF arrSize = 0 THEN
+		NewSys(p, nofdim*4+12); Kernel32.LeaveCriticalSection(moduleCS); RETURN
+	ELSIF arrSize < 0 THEN
+		Kernel32.LeaveCriticalSection(moduleCS); HALT(99)
+	END;
 	vectSize := SYSTEM.VAL(LONGINT, SYSTEM.VAL(SET, 4*nofdim) + SYSTEM.VAL(SET, 4));	(* -> ADR(firstElem) MOD 8 = 0 *)
 	IF eltag^.ptroff = -4 THEN (* no pointers in element type *)
 		NewSys(p, arrSize + vectSize + 12);
 		SYSTEM.PUT(p, SYSTEM.VAL(SET, arrSize + vectSize+15)-SYSTEM.VAL(SET, 3));
+		Kernel32.LeaveCriticalSection(moduleCS);
 		RETURN
 	END;
 	size := SYSTEM.VAL(LONGINT, SYSTEM.VAL(SET, arrSize + vectSize + (16 + B-1))-SYSTEM.VAL(SET, B-1));
@@ -648,10 +701,12 @@ BEGIN
 	(* ptr^.z1 is reserved for mark phase *)
 	ptr^.z2 := firstElem;
 	ptr^.z3 := 0; ptr^.z4 := 0; ptr^.z5 := 0; ptr^.z6 := 0;
-	p := SYSTEM.VAL(ADDRESS, ptr) + 4
+	p := SYSTEM.VAL(ADDRESS, ptr) + 4;
+	Kernel32.LeaveCriticalSection(moduleCS)
 END NewArr;
 
-(** RegisterObject - Register an object for finalization.  Never perform upcalls in the fin procedure! basic = FALSE *)
+(** RegisterObject - Register an object (POINTER TO RECORD or POINTER TO ARRAY, not SysBlk) for finalization.
+Never perform upcalls in the fin procedure! basic = FALSE *)
 
 PROCEDURE RegisterObject*(obj: SYSTEM.PTR;  fin: Finalizer;  basic: BOOLEAN);
 	VAR n: FinObj;
@@ -699,13 +754,15 @@ BEGIN
 END FinalizeModuleObjs;
 
 PROCEDURE FinalizeModule*(m: Module);
-	VAR h: Proc;
+	VAR excp: ExcpFrm; h: Proc;
 BEGIN
+	excp.panic := FALSE; LockAndTry(moduleCS, excp);
 	FinalizeModuleObjs(m, FALSE);
 	IF m.term # NIL THEN
 		h := m.term; m.term := NIL; h
 	END;
-	FinalizeModuleObjs(m, TRUE)
+	FinalizeModuleObjs(m, TRUE);
+	UnlockAndUnwind(moduleCS, excp)
 END FinalizeModule;
 
 PROCEDURE InitHeap;	(* heapTop, pageheap and modules already initialized *)
@@ -731,7 +788,7 @@ BEGIN
 	bootHeapBlockDesc.next := nil;
 	firstHeapBlock := SYSTEM.ADR(bootHeapBlockDesc);
 	minHeapAdr := bootHeapBlockDesc.firstBlock; maxHeapAdr := bootHeapBlockDesc.endBlock;
-	(* find last block in Linker-generated heap (p^.tag will be NIL because of SYSTEM.PUT(low0, LONG(LONG(0))); above) *)
+	(* find last block in Linker-generated heap (p^.tag will be NIL) *)
 	p := SYSTEM.VAL(Blockm4Ptr, bootHeapBlockDesc.firstBlock);
 	WHILE p^.tag # NIL DO
 		tag := p^.tag;
@@ -752,15 +809,23 @@ BEGIN
 	CheckStacks := NIL; BeginAtomic := NIL; EndAtomic := NIL
 END InitHeap;
 
+PROCEDURE CanShutdown*(): BOOLEAN;
+	VAR can: BOOLEAN;
+BEGIN
+	Kernel32.EnterCriticalSection(moduleCS);
+	can := ~inShutdown & (lock <= 0);
+	Kernel32.LeaveCriticalSection(moduleCS);
+	RETURN can
+END CanShutdown;
+
 (** Shutdown - Terminate Oberon after executing all module terminators.  *)
 
 PROCEDURE Shutdown*(code: LONGINT);
-	VAR m: Module; block, next: HeapBlock;
+	VAR excp: ExcpFrm; m: Module; block, next: HeapBlock;
 BEGIN
-	ASSERT(lock <= 0);
-	IF lock = MIN(LONGINT) THEN RETURN END;
-	lock :=  MIN(LONGINT);
-	Kernel32.EnterCriticalSection(moduleCS);
+	excp.panic := FALSE; LockAndTry(moduleCS, excp);
+	ASSERT((lock <= 0) & ~inShutdown);
+	excp.panic := TRUE; inShutdown := TRUE;
 	m := modules;
 	WHILE m # NIL DO
 		FinalizeModuleObjs(m, FALSE); m := m.next
@@ -771,7 +836,7 @@ BEGIN
 	END;
 	GClevel := MIN(LONGINT) DIV 2;
 	CheckStacks := NIL; BeginAtomic := NIL; EndAtomic := NIL;
-	Kernel32.LeaveCriticalSection(moduleCS);
+	UnlockAndUnwind(moduleCS, excp);
 	Kernel32.DeleteCriticalSection(moduleCS);
 Kernel32.Str("Oberon.Exit"); Kernel32.Ln();
 	IF ~isEXE THEN
@@ -797,6 +862,7 @@ PROCEDURE InitRuntime;
 		newRec: PROCEDURE(VAR p: ADDRESS;  tag: Tag);
 		newSys: PROCEDURE(VAR p: ADDRESS;  size: LONGINT);
 		newArr: PROCEDURE(VAR p: ADDRESS;  eltag: Tag;  nofelem, nofdim: LONGINT);
+		notImpl: PROCEDURE;
 BEGIN
 	newRec := NewRec;	(* used in Modules and Types *)
 	newSys := NewSys;
@@ -809,13 +875,11 @@ END InitRuntime;
 BEGIN
 	Kernel32.Shutdown := Shutdown;
 	Kernel32.Str("Kernel.modules "); Kernel32.Hex(SYSTEM.ADR(modules)); Kernel32.Ln();
-	lock := 0;
-	IF hInstance = Kernel32.NULL THEN (* from exe file *)
-		hInstance := Kernel32.GetModuleHandle(NIL); isEXE := TRUE
-	ELSE
-		isEXE := FALSE
+	lock := 0; inShutdown := FALSE;
+	IF isEXE THEN
+		hInstance := Kernel32.GetModuleHandle(NIL)
 	END;
-	version := "Win32 2.4 (14.5.2001)";
+	version := "Win32 2.5 (19.12.2004)";
 	Kernel32.InitializeCriticalSection(moduleCS);
 	InitHeap; InitRuntime
 END Kernel.

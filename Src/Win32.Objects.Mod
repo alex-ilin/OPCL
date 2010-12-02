@@ -1,4 +1,4 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE Objects; (** portable / source: Win32.Objects.Mod *)	(* JG 21.9.93/comments jm 28.2.95*)
@@ -244,9 +244,6 @@ MODULE Objects; (** portable / source: Win32.Objects.Mod *)	(* JG 21.9.93/commen
 						L.next := FirstLib.next; FirstLib.next := L
 					ELSE
 						NEW(A); COPY(name, A.name); A.lib := L; A.next := FirstAlias.next; FirstAlias.next := A;
-						Kernel32.Str("Alias: ");
-						Kernel32.Str(name); Kernel32.Str(" -> "); Kernel32.Str(L.name);
-						Kernel32.Ln()
 					END
 				END
 			END

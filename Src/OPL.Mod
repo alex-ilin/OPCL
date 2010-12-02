@@ -1,4 +1,4 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 (* OPL - Low-Level Code Generator (translation from Pseudo RISC to i80386) (back end) *)
@@ -387,7 +387,7 @@ References:
 		MaxSaveLevel	= 32;	(* maximum register pops *)
 
 		(* object modes *)
-		Var = 1; VarPar = 2; Con = 3; Fld = 4; Typ = 5; LProc = 6; XProc = 7; CProc = 9; IProc = 10; TProc = 13;
+		Var = 1; VarPar = 2; Con = 3; Fld = 4; Typ = 5; LProc = 6; XProc = 7; CProc = 9; IProc = 10; Module = 11; TProc = 13;
 
 		(* structure forms *)
 		Undef = 0; Byte = 1; Bool = 2; Char = 3; SInt = 4; Int = 5; LInt = 6;
@@ -483,7 +483,7 @@ References:
 		EUEnd = 0X; EURecord = 1X; EUProcFlag = 080000000H;
 
 		(* sysflag *) (* ejz *)
-		notag = 1; stdcall = 2; cdecl = 3; untraced = 4;
+		notag = 1; stdcall = 2; cdecl = 3; untraced = 4; delegate = 5;
 
 	TYPE
 		LinkRec = RECORD
@@ -517,7 +517,8 @@ References:
 	varConsLink: VarConsTable;	(* variable / constant link table *)
 	link: ARRAY LinkLength OF LinkRec;	(* link table *)
 	varConsTab: VarConsLinkTable;	(* variable / constant table *)
-	nofVarCons, noVarEntries, nofEntries, nofptrs, nofVarConsLinks, nofLinks, nofrecs: INTEGER;
+	nofVarCons, noVarEntries, nofEntries, (*nofptrs,*) nofVarConsLinks, nofLinks, nofrecs: INTEGER;
+	nofptrs: LONGINT;
 	ConstErr, RegErr, VarEntryErr, LinkErr: BOOLEAN;
 
 	(* i386 code generator *)
@@ -535,7 +536,6 @@ References:
 	gVarLink*: LONGINT;
 
 	explist: ExpTable; exppos: LONGINT;	(*list of fp. To check for duplicates*)
-
 
 	PROCEDURE Init*;
 	BEGIN
@@ -1040,6 +1040,19 @@ References:
 		DecCheckReg (instr.dest, dummy, dummy, dummy)
 	END LoadProc;
 
+	PROCEDURE FixupLoadProc*(VAR instr: Instruction); (* ejz *)
+		VAR entryNr, linkadr: LONGINT;
+	BEGIN
+		entryNr := instr.src1 MOD 10000H;
+		linkadr := instr.node.obj.linkadr;
+		IF (entry[entryNr] = -1) & (linkadr >= 0) THEN
+			IF linkadr > 32767 THEN
+				entry[entryNr] := SHORT(linkadr - 65536)
+			ELSE
+				entry[entryNr] := SHORT(linkadr)
+			END
+		END
+	END FixupLoadProc;
 
 	PROCEDURE Store (VAR instr: Instruction);
 	(* store, getReg *)
@@ -1325,7 +1338,7 @@ ASSERT(~loaded(instr.dest));
 					reg := EBX;
 					WHILE (reg >= EAX) & (regTab [reg] # free) DO DEC (reg) END;
 					IF LastUse (src) & (((src IN {AL, CL, DL, BL}) & (sregTab [src - AL + 4] = free)) OR
-				 	   ((src IN {AH, CH, DH, BH}) & (sregTab [src+AL-4] = free))) THEN
+				 	   ((src IN {AH, CH, DH, BH}) & (sregTab [src-AL-4] = free))) THEN
 						reg := src MOD 4
 					ELSIF reg < EAX THEN GetSplittableReg (reg)
 					END
@@ -1443,14 +1456,19 @@ ASSERT(~loaded(instr.dest));
 		IF mode = RegReg THEN OPO.GenIDIV (RegReg, base, noBase, noInx, noScale, noDisp)
 		ELSE OPO.GenIDIV (mode, size, base, inx, scale, disp)
 		END;
-		IF (size = Bit8) THEN OPO.GenTyp1 (CMP, ImmReg, AH, noBase, noInx, noScale, noDisp, 0)
-		ELSE OPO.GenTyp1 (CMP, ImmReg, EDX+size, noBase, noInx, noScale, noDisp, 0)
-		END;
 		IF instr.op DIV 32 = Div THEN
-			IF size = Bit32 THEN OPO.GenJcc (JGE, 1)
-			ELSE OPO.GenJcc (JGE, 2)
-			END;
-			OPO.GenDEC (ImmReg, EAX+size, noBase, noInx, noScale, noDisp);
+			(*
+				Optimize
+					CMP R0, 0
+					JNL  skip
+					DEC R1
+				with
+					SHL R0, 1	-> sets CF
+					SBB R1, 0
+			*)
+			OPO.GenShiftRot(OPO.SHL, ImmReg, EDX+size, noBase, noInx, noScale, noDisp, 1);
+			OPO.GenTyp1(OPO.SBB, ImmReg, EAX+size, noBase, noInx, noScale, noDisp, 0);
+
 			instr.reg := EAX+size;
 			IF size = Bit8 THEN
 				regTab [EAX] := Splitted; sregTab [AL-AL] := instr.dest; sregTab [AH-AL] := free
@@ -1459,6 +1477,9 @@ ASSERT(~loaded(instr.dest));
 				FreeReg (EDX)
 			END
 		ELSE (* MOD *)
+			IF (size = Bit8) THEN OPO.GenTyp1 (CMP, ImmReg, AH, noBase, noInx, noScale, noDisp, 0)
+			ELSE OPO.GenTyp1 (CMP, ImmReg, EDX+size, noBase, noInx, noScale, noDisp, 0)
+			END;
 			ASSERT (instr.op DIV 32 = Mod);
 			IF size = Bit16 THEN OPO.GenJcc (JGE, 3)
 			ELSE OPO.GenJcc (JGE, 2)
@@ -2003,7 +2024,7 @@ ASSERT(~loaded(instr.dest));
 		OPO.GenFSTCW (ESP, noInx, noScale, 0);
 		OPO.PutByte (OPO.WAIT);
 		OPO.GenMOV (MemReg, dest, ESP, noInx, noScale, 0, noImm);
-		(*OPO.GenTyp1 (OPO.AND, ImmReg, dest, noBase, noInx, noScale, noDisp, 0F3FFH);*)	(*prk removed*)
+		OPO.GenTyp1 (OPO.AND, ImmReg, dest, noBase, noInx, noScale, noDisp, 0F3FFH);
 		OPO.GenTyp1 (OPO.Or, ImmReg, dest, noBase, noInx, noScale, noDisp, 0400H);
 		OPO.GenMOV (RegMem, dest, ESP, noInx, noScale, 4, noImm);
 		OPO.GenFLDCW (ESP, noInx, noScale, 4);
@@ -2018,11 +2039,6 @@ ASSERT(~loaded(instr.dest));
 		ELSE OPO.GenFSTP (RegMem, OPO.sInt, ESP, noInx, noScale, 4)
 		END;
 		OPO.PutByte (OPO.WAIT);
-(*	(*prk removed*)
-		OPO.GenFSTCW (ESP, noInx, noScale, 0);
-		OPO.PutByte (OPO.WAIT);
-		OPO.GenTyp1 (OPO.AND, ImmMem, Bit32, ESP, noInx, noScale, 0, 0F3FFH);
-*)
 		OPO.GenFLDCW (ESP, noInx, noScale, 0);
 		OPO.GenMOV (MemReg, dest, ESP, noInx, noScale, 4, noImm);
 		OPO.GenTyp1 (OPO.ADD, ImmReg, ESP, noBase, noInx, noScale, noDisp, 8);
@@ -2037,7 +2053,7 @@ ASSERT(~loaded(instr.dest));
 		L := OPO.pc;
 		OPO.GenPUSH (Regs, EAX, noBase, noInx, noScale, noDisp, noInx);
 		OPO.GenDEC (ImmReg, reg, noBase, noInx, noScale, noDisp);
-		OPO.GenJcc (JNZ, L - (OPO.pc + 2));
+		OPO.GenJcc (JG, L - (OPO.pc + 2));
 		FreeReg(reg);
 	END ClearSDynArr;
 
@@ -2156,9 +2172,9 @@ ASSERT(~loaded(instr.dest));
 		OPO.GenPUSH (Regs, EBP, noBase, noInx, noScale, noDisp, noImm);
 		OPO.GenMOV (RegReg, EBP, ESP, noInx, noScale, noDisp, noImm);
 		IF (locSize # 0) THEN
-			IF (OPM.ptrinit IN OPM.options) THEN
+			IF (OPM.ptrinit IN OPM.codeOptions) THEN
 				first := TRUE;
-				IF (OPM.fullstackinit IN OPM.options) THEN
+				IF (OPM.fullstackinit IN OPM.codeOptions) THEN
 					FullClearStack(locSize DIV 4)
 				ELSE
 					OPO.GenTyp1 (SUB, ImmReg, ESP, noBase, noInx, noScale, noDisp, locSize);
@@ -2885,7 +2901,7 @@ ASSERT(~loaded(instr.dest));
 			IF obj.mode IN {Var, VarPar} THEN
 				f := obj.typ.form;
 				IF NewRef THEN
-					IF (f IN {Byte..Set, Pointer, ProcTyp}) OR (obj.typ.comp = Record) OR
+					IF (f IN {Byte..Set, Pointer, ProcTyp, HInt}) OR (obj.typ.comp = Record) OR
 							(obj.typ.comp IN {StaticArr, OpenArr}) & (obj.typ.BaseTyp.form IN {Byte..Set, Pointer, ProcTyp}) THEN
 						IF (obj.mode = Var) & (obj.typ.comp # OpenArr) THEN OPM.RefW (1X)	(* direct *)
 						ELSE OPM.RefW (3X)	(* indirect *)
@@ -2938,7 +2954,7 @@ ASSERT(~loaded(instr.dest));
 	END LSW;
 
 	PROCEDURE Export(obj: OPT.Object; VAR nofExp: INTEGER);
-		VAR typ: OPT.Struct;  i: LONGINT; tmp: ExpTable;
+		VAR typ: OPT.Struct; i: LONGINT; tmp: ExpTable;
 
 		PROCEDURE ExportMeth(fld: OPT.Object; basetyp: OPT.Struct; VAR noFld: INTEGER);
 		BEGIN
@@ -3043,7 +3059,7 @@ ASSERT(~loaded(instr.dest));
 				IF ~obj.used & (obj.mode = Typ) & (obj.vis#internal) & (obj.typ.strobj # obj) &
 					(obj.typ.strobj.vis=internal) & obj.typ.strobj.used THEN
 					alias := TRUE;
-					OPM.LogWLn; OPM.LogWStr("  OPL.Use, (strobj) "); OPM.LogWStr(obj.name)
+					(*OPM.LogWLn; OPM.LogWStr("  OPL.Use, (strobj) "); OPM.LogWStr(obj.name)*)
 				END;
 				IF alias OR obj.used & (obj.vis#internal)
 				& ((obj.mode#XProc) OR (obj.adr DIV 10000H # 0) & (link[obj.adr DIV 10000H].offset # Nil))
@@ -3070,11 +3086,12 @@ ASSERT(~loaded(instr.dest));
 	PROCEDURE OutCode*(VAR modName: ARRAY OF CHAR);
 		VAR
 			i, k, pos: LONGINT;
-			nofcmds, nofnewmth, nofinhmth, linkCorrection, nofExp: INTEGER;
+			nofcmds, nofnewmth, nofinhmth, linkCorrection, nofExp, nofImp: INTEGER;
 			obj: OPT.Object;
 			typ, btyp: OPT.Struct;
 			commandTab: ARRAY MaxCommands OF OPT.Object;
 			newMthTab: ARRAY MaxEntry OF OPT.Object;
+			modMap: ARRAY 256 OF LONGINT;
 
 		PROCEDURE WriteName (VAR name: ARRAY OF CHAR);
 			VAR i: INTEGER; ch: CHAR;
@@ -3106,6 +3123,7 @@ ASSERT(~loaded(instr.dest));
 		BEGIN
 			IF typ.form = Pointer THEN
 				IF (typ.sysflag=0) THEN Add(adr) END
+			ELSIF (typ.form = ProcTyp) & (typ.sysflag = delegate) THEN Add(adr+4)
 			ELSIF typ.comp = Record THEN
 				btyp := typ.BaseTyp;
 				IF btyp # NIL THEN FindPtrs (btyp, adr) END;
@@ -3122,7 +3140,7 @@ ASSERT(~loaded(instr.dest));
 					n := btyp.n * n;
 					btyp := btyp.BaseTyp
 				END;
-				IF (btyp.form = Pointer) OR (btyp.comp IN {Record, DynArr}) THEN
+				IF (btyp.form = Pointer) OR (btyp.comp IN {Record, DynArr}) OR ((btyp.form = ProcTyp) & (btyp.sysflag = delegate)) THEN
 					i := 0; s := btyp.size;
 					WHILE i < n DO  FindPtrs (btyp, i * s + adr); INC (i)  END
 				END
@@ -3132,20 +3150,26 @@ ASSERT(~loaded(instr.dest));
 		END FindPtrs;
 
 		PROCEDURE traverse (obj: OPT.Object);
-			VAR u: INTEGER;
 		BEGIN
 			IF obj # NIL THEN
 				IF obj.mode = XProc THEN
-					IF (obj.vis # internal) & (obj.link = NIL) & (obj.typ = OPT.notyp) THEN (* command *)
-						u := 0;
-						WHILE obj.name[u] > 0X DO INC (u) END;
-						IF nofcmds <= MaxCommands THEN
-							commandTab[nofcmds] := obj;
-							INC (nofcmds)
-						ELSE OPM.err (232)
+					IF obj.vis # internal THEN	(* exported proc *)
+						IF (obj.link = NIL) & (obj.typ = OPT.notyp) THEN (* command *)
+							IF nofcmds <= MaxCommands THEN
+								commandTab[nofcmds] := obj;
+								INC (nofcmds)
+							ELSE OPM.err (232)
+							END
+						ELSIF (obj.typ = OPT.ptrtyp) & (obj.link # NIL) & (obj.link.typ = OPT.ptrtyp) & (obj.link.link = NIL) THEN	(* parameter command *)
+							IF nofcmds <= MaxCommands THEN
+								commandTab[nofcmds] := obj;
+								INC (nofcmds)
+							ELSE OPM.err (232)
+							END
 						END
 					END
 				ELSIF (obj.mode = Var) & (obj.sysflag # untraced) THEN FindPtrs (obj.typ, obj.linkadr)
+				ELSIF (obj.mode = Module) THEN OPT.modules[-obj.mnolev].used := TRUE	(* force emission in import list *)
 				END;
 				traverse (obj.left); traverse (obj.right)
 			END
@@ -3176,12 +3200,20 @@ ASSERT(~loaded(instr.dest));
 			DEC (i)
 		END;
 		nofcmds := 0;
-		traverse (OPT.topScope.right); (* collect commands and pointers *)
+		traverse (OPT.topScope.right); (* collect commands, modules and pointers *)
+		nofImp := 0; i := 1;
+		WHILE i < OPT.nofmod DO
+			IF OPT.modules[i].used THEN
+				INC(nofImp); modMap[i] := nofImp
+			END;
+			INC(i)
+		END;
 		i := 0;
 	(* header block *)
 		OPM.ObjWInt (nofEntries); OPM.ObjWInt (nofcmds);
-		OPM.ObjWInt (nofptrs); OPM.ObjWInt (nofrecs);
-		OPM.ObjWInt (OPT.nofmod-1);
+		IF nofptrs > MAX(INTEGER) THEN OPM.err(222) END;
+		OPM.ObjWInt (SHORT(nofptrs)); OPM.ObjWInt (nofrecs);
+		OPM.ObjWInt (nofImp);
 		OPM.ObjWInt (nofVarCons); OPM.ObjWInt (nofLinks-linkCorrection);
 		OPM.ObjWBytes (OPO.dsize, 4); OPM.ObjWInt (SHORT (OPO.csize)); OPM.ObjWInt (SHORT (OPO.pc));
 		WriteName (modName);
@@ -3193,6 +3225,7 @@ ASSERT(~loaded(instr.dest));
 		i := 0; (* write command names and entry addresses *)
 		WHILE i < nofcmds DO
 			obj := commandTab[i];
+			IF obj.link # NIL THEN OPM.ObjW("$") END;	(* flag for command with parameter *)
 			WriteName (obj.name); OPM.ObjWInt (entry [obj.adr MOD 10000H]);
 			INC (i)
 		END;
@@ -3208,14 +3241,16 @@ ASSERT(~loaded(instr.dest));
 		i := 1;
 		WHILE i < OPT.nofmod DO
 			obj := OPT.modules[i];
-			WriteName (obj.name); (* name *)
+			IF obj.used THEN
+				WriteName (obj.name); (* name *)
+			END;
 			INC (i)
 		END;
 	(* VarConsLink block *)
 		OPM.ObjW (VarConsLinkTag);
 		i := 0;
 		WHILE i < nofVarCons DO
-			OPM.ObjW (CHR (varConsLink[i].mod));
+			OPM.ObjW (CHR (modMap[varConsLink[i].mod]));
 			OPM.ObjWInt (varConsLink[i].entry); OPM.ObjWInt (varConsLink[i].noflinks);
 			k := varConsLink[i].index;
 			WHILE k # noEntry DO
@@ -3229,7 +3264,7 @@ ASSERT(~loaded(instr.dest));
 		i := 0;
 		WHILE i < nofLinks DO
 			IF (link[i].offset # Nil) & (link[i].mod <= 0) THEN
-				OPM.ObjW (CHR (link[i].mod)); OPM.ObjW (CHR (link[i].entry)); OPM.ObjWInt (link[i].offset)
+				OPM.ObjW (CHR (modMap[link[i].mod])); OPM.ObjW (CHR (link[i].entry)); OPM.ObjWInt (link[i].offset)
 			END;
 			INC (i)
 		END;
@@ -3278,7 +3313,7 @@ ASSERT(~loaded(instr.dest));
 				OPM.ObjWInt (-1); OPM.ObjWLInt (-1)
 			ELSE
 				nofinhmth := SHORT (btyp.n);
-				OPM.ObjWInt (btyp.mno);
+				OPM.ObjWInt (SHORT(modMap[btyp.mno]));
 				IF btyp.mno = 0 THEN OPM.ObjWBytes(btyp.tdadr, 4)
 				ELSE OPM.ObjWLInt(btyp.strobj.fp)
 				END
@@ -3288,7 +3323,8 @@ ASSERT(~loaded(instr.dest));
 			nofnewmth := 0;
 			FindNewMths (typ.strobj);
 			OPM.ObjWInt (nofnewmth);
-			OPM.ObjWInt (nofptrs);
+			IF nofptrs > MAX(INTEGER) THEN OPM.err(221) END;
+			OPM.ObjWInt (SHORT(nofptrs));
 			IF (typ.strobj # NIL) & (typ.strobj.mnolev = 0) THEN
 				IF typ.ptr # NIL THEN
 					IF typ.ptr.strobj = NIL THEN WriteName(typ.strobj.name) ELSE WriteName(typ.ptr.strobj.name) END
@@ -3330,7 +3366,3 @@ BEGIN
 	SetccConvert [4] := SETG; SetccConvert [5] := SETGE; SetccConvert [6] := SETA; SetccConvert [7] := SETAE;
 	SetccConvert [8] := SETB; SetccConvert [9] := SETBE; SetccConvert [10] := SETB; SetccConvert [11] := SETNB;
 END OPL.
-
-(*
-	30.03.01	prk	option constants moved to OPM
-*)

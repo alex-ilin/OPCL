@@ -6,7 +6,7 @@
     Nov 2002
  *)
 
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE Texts; (** portable *)	(*JG 23.8.94*)
@@ -116,7 +116,7 @@ VAR
 	Log*: Text;
 	TextBlockId* (** First character of a text block. *), DocBlockId, NoSpex, NoSpex2, TextSpex: CHAR;
 	Wfile: Files.File; R: Files.Rider; DelBuf: Buffer; H: Objects.Handler;
-	nameChars: ARRAY 256 OF BOOLEAN; obs: Objects.Library;
+	nameChars*: ARRAY 256 OF BOOLEAN; obs: Objects.Library;
 
 (** Load text block from ASCII file f to text T. *)
 PROCEDURE LoadAscii*(T: Text; f: Files.File);
@@ -378,8 +378,8 @@ BEGIN
 		ELSE LoadAscii(T, f)
 		END*)
 		LoadAscii(T, f);
-	ELSE GenNew(T);
-	END;
+	ELSE GenNew(T)
+	END
 END Open;
 
 (** Text generator procedure. Resulting text is assigned to Objects.NewObj. *)
@@ -669,7 +669,7 @@ BEGIN
 			Read(R, ch); RETURN
 		END
 	END;
-	ch := R.buf[R.bufpos]; INC(R.bufpos); INC(R.off);
+	ch := R.buf[R.bufpos]; INC(R.bufpos); INC(R.off)
 END Read;
 
 (** Return reader's position within the text. *)
@@ -754,7 +754,7 @@ BEGIN
 				IF neg THEN S.i := -k ELSE S.i := k END
 			ELSIF (ch = ".") (*& (S.lib IS Fonts.Font)*) THEN (*read real*)
 				Read(S, ch); h := i;
-				WHILE ("0" <= ch) & (ch <= "9") (*& (S.lib IS Fonts.Font)*) & (i <= maxD) DO d[i] := ch; INC(i); Read(S, ch) END;
+				WHILE ("0" <= ch) & (ch <= "9") (*& (S.lib IS Fonts.Font)*) & (i < maxD) DO d[i] := ch; INC(i); Read(S, ch) END;
 			(*-------- begin floating-point handling BM 1993.3.10 -----------------------------------*)
 				WHILE i MOD 8 # 0 DO d[i] := "0"; INC(i) END;
 				j := 0; k := 0; k1 := 0; k2 := 0; k3 := 0; (* store digits 0..7, 8..15, 16..23, 24..31 in k, k1, k2, k3 *)
@@ -835,7 +835,7 @@ PROCEDURE SetColor*(VAR W: Writer; col: SHORTINT);
 BEGIN W.col := col
 END SetColor;
 
-(** Set writer W to verticall offset voff. Vertical offset controls the writing of super- and sub-scripts. *)
+(** Set writer W to vertical offset voff. Vertical offset controls the writing of super- and sub-scripts. *)
 PROCEDURE SetOffset*(VAR W: Writer; voff: SHORTINT);
 BEGIN W.voff := voff
 END SetOffset;
@@ -853,7 +853,7 @@ BEGIN (*p := W.buf.last;
 		W.buf.last := p
 	END;
 	Files.Write(W.R, ch);
-	INC(p.len); INC(W.buf.len);*)
+	INC(p.len); INC(W.buf.len)*)
 	Console.Write(ch);
 END Write;
 
@@ -1202,7 +1202,8 @@ Fonts.Font also settles the question. Non-character objects of a text are typica
 
 4. The scanner classes indicate what token was scanned. The scanner understands the following token types:
 
-	Name	Longest sequence consisting of A..Z, a..z, ".", directory separator, and "@".
+	Name	Longest sequence starting with "A".."Z", "a".."z", ".", "/", and containing
+		"A".."Z", "a".."z", "0".."9", "@", ".", "/", ":", "_", 80X..96X
 	String	Any character sequence surrounded by double quotes, i.e. "string".
 		The quotes are not returned in the s field of the scanner descriptor.
 	Int	Any valid integer number.

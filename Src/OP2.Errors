@@ -170,7 +170,7 @@ Limitations of implementation
 207	difference too large
 208	overflow in arithmetic shift
 209	case range too large
-210	code too long
+210	code too long ( > 64 KB)
 211	procedure too large (reduce procedure size)
 212	operator should precede procedure declaration
 213	too many cases in case statement
@@ -202,6 +202,7 @@ Limitations of implementation
 242	address overflow
 243	too many imported variables
 
+246	already inside an exclusive statement block
 247	local variables not allowed in inlined assembler procedure
 248	PASSIVATE with global condition
 249	only allowed for POINTER TO RECORDs
@@ -215,6 +216,7 @@ Limitations of implementation
 262	Active Oberon relaxed declaration order
 270	Oberon X structured return type
 271	Oberon X array
+272	allowed only in active objects
 280	duplicate fingerprint
 
 Compiler Warnings
@@ -249,6 +251,7 @@ Incorrect use of i80386 Assembly Language
 515	Instruction not supported on target
 516	no target specified
 517	access to non-local variables not allowed in exported inlined procedure
+518	inlined procedure: procedure activation frame does not exist
 
 Analyzer Warnings
 

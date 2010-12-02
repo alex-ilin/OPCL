@@ -142,8 +142,8 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 	PROCEDURE *FinalizeEvent(event: PTR);
 	BEGIN
 		WITH event: Event DO
-			IF event.handle # Kernel32.InvalidHandleValue THEN
-				Kernel32.CloseHandle(event.handle); event.handle := Kernel32.InvalidHandleValue
+			IF event.handle # Kernel32.NULL THEN
+				Kernel32.CloseHandle(event.handle); event.handle := Kernel32.NULL
 			END
 		END
 	END FinalizeEvent;
@@ -185,25 +185,23 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 	PROCEDURE *FinalizeThread(t: PTR);
 	BEGIN
 		WITH t: Thread DO
-			IF t.handle # Kernel32.InvalidHandleValue THEN
-				Kernel32.CloseHandle(t.handle); t.handle := Kernel32.InvalidHandleValue
+			IF t.handle # Kernel32.NULL THEN
+				Kernel32.CloseHandle(t.handle); t.handle := Kernel32.NULL
 			END
 		END
 	END FinalizeThread;
 
-	PROCEDURE FindStackBottom(t: Thread);
-		VAR bp, lastbp: LONGINT;
+	PROCEDURE - stackBottom
+	(* starting address of user stack for current thread, called stack top in TIB.H *)
+		064H, 08BH, 005H, 004H, 000H, 000H, 000H;	(* MOV EAX, FS:[4] *)
+
+	PROCEDURE StackBottom(): Kernel32.ADDRESS;
+		VAR x: Kernel32.ADDRESS;
 	BEGIN
-		bp := t.cont.Ebp;
-		LOOP
-			lastbp := bp;
-			SYSTEM.GET(bp, bp); (* return addr from stack *)
-			IF (bp <= lastbp) OR ((bp MOD 4) # 0) OR ((bp-lastbp) > 1024*1024) THEN (* invalid stack frame *)
-				EXIT
-			END
-		END;
-		t.stackBottom := lastbp
-	END FindStackBottom;
+		stackBottom();
+		SYSTEM.GETREG(SYSTEM.EAX, x);
+		RETURN x
+	END StackBottom;
 
 (** Register the calling thread as non-Oberon thread. *)
 	PROCEDURE Register*(name: ARRAY OF CHAR): Thread;
@@ -223,7 +221,7 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 			ASSERT(ret # Kernel32.False);
 			t.cont.ContextFlags := Kernel32.ContextFull;
 			ret := Kernel32.GetThreadContext(t.handle, t.cont); ASSERT(ret # Kernel32.False);
-			FindStackBottom(t);
+			t.stackBottom := StackBottom();
 			t.next := threads; threads := t;
 			Kernel.RegisterObject(t, FinalizeThread, TRUE)
 		ELSIF t IS RegThread THEN
@@ -410,10 +408,9 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 		WHILE (t # NIL) & (t.id # id) DO
 			t := t.next
 		END;
-		Kernel32.LeaveCriticalSection(moduleCS);
 		IF (t # NIL) & t.first THEN
 			t.first := FALSE; wrapper := Wrapper;
-			SYSTEM.GETREG(SYSTEM.ESP, t.stackBottom);
+			t.stackBottom := StackBottom();
 			t.cont.ContextFlags := Kernel32.ContextFull;
 			Kernel32.GetThreadContext(t.handle, t.cont);
 			t.cont.Eip := SYSTEM.VAL(LONGINT, wrapper);
@@ -421,15 +418,17 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 			excp.handler := ExcpFrmHandler; excp.link := Kernel32.NULL;
 			Kernel32.InstallExcpFrm(excp);
 			Reals.SetFCR(Reals.DefaultFCR);
+			INC(Kernel.GClevel);
+			Kernel32.LeaveCriticalSection(moduleCS);
 			t.proc(); Kill(t)
 		ELSE
 			ASSERT(t = NIL);
-			Kernel32.EnterCriticalSection(moduleCS);
 			pt := NIL; t := aliens;
 			WHILE (t # NIL) & (t.id # id) DO
 				pt := t; t := t.next
 			END;
 			ASSERT(t # NIL);
+			INC(Kernel.GClevel);
 			Cleanup(t);
 			IF pt # NIL THEN
 				pt.next := t.next
@@ -443,7 +442,7 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 
 (** Start a new thread executing p. *)
 	PROCEDURE Start*(t: Thread; p: BodyProc; stackLen: LONGINT);
-		VAR pt, tt: Thread;
+		VAR pt, tt: Thread; handle: Kernel32.HANDLE;
 	BEGIN
 		ASSERT(threaded & (p # NIL) & (t # NIL), 32);
 		Kernel32.EnterCriticalSection(moduleCS);
@@ -459,12 +458,18 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 		ELSE
 			threads := t
 		END;
+		DEC(Kernel.GClevel);
 		Kernel.RegisterObject(t, FinalizeThread, TRUE);
-		t.next := NIL; t.proc := p; t.handle := Kernel32.InvalidHandleValue; t.id := 0;
+		t.next := NIL; t.proc := p; t.handle := Kernel32.NULL; t.id := 0;
 		t.stackBottom := Kernel32.NULL; t.atomic := FALSE; t.first := TRUE; t.GCCount := 0;
-		t.handle := Kernel32.CreateThread(NIL, stackLen, Wrapper, 0, 0, t.id);
+		handle := Kernel32.CreateThread(NIL, stackLen, Wrapper, 0, 0, t.id);
+		IF handle = Kernel32.NULL THEN
+			Kernel.GC();
+			handle := Kernel32.CreateThread(NIL, stackLen, Wrapper, 0, 0, t.id)
+		END;
+		t.handle := handle;
 		Kernel32.LeaveCriticalSection(moduleCS);
-		ASSERT(t.handle # Kernel32.InvalidHandleValue, 33)
+		ASSERT(handle # Kernel32.NULL, 33)
 	END Start;
 
 (** Enumerate all threads. *)
@@ -590,10 +595,7 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 			Kernel.Candidate(cont.Edi); Kernel.Candidate(cont.Esi);
 			Kernel.Candidate(cont.Ebx); Kernel.Candidate(cont.Edx);
 			Kernel.Candidate(cont.Ecx); Kernel.Candidate(cont.Eax);
-			sp := cont.Esp;
-			IF cont.Ebp > t.stackBottom THEN
-				t.stackBottom := cont.Ebp
-			END;
+			sp := cont.Esp; ASSERT(cont.Ebp <= t.stackBottom);
 			bottom := t.stackBottom;
 			WHILE sp < bottom DO
 				SYSTEM.GET(sp, p);

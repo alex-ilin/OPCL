@@ -1,4 +1,4 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 (* OPP - Oberon Portable Parser (front end) *)
@@ -68,13 +68,11 @@ MODULE OPP;	(** non-portable *)
 		checkOverwriting = 31;	(*set in record.strobj when field/mth overwriting check is delayed because base is undef*)
 
 		(* record flags (flags) *)
-		protectedObj = 4; activeObj = 5; safe = 8; shared = 10;
-
-		(* process defaults *)
-		DefaultProcessPrio = 0; DefaultProcessTyp = 0;
+		protectedObj = 4; activeObj = 5; safe = 8;
 
 		(* sysflag *) (* ejz *)
-		notag = 1; stdcall = 2; cdecl = 3; untraced = 4;
+		notag = 1; stdcall = 2; cdecl = 3; untraced = 4; delegate = 5;
+		systemtype = 6;	(*implicitly generated type for arr of ptrs, allocate only when used*)
 
 		(* the hidden parameter for methods *)
 		HiddenSelf = "@SELF";
@@ -105,7 +103,8 @@ MODULE OPP;	(** non-portable *)
 		SignOnMessage*: ARRAY 80 OF CHAR;
 		sym, level: SHORTINT;
 		LoopLevel: INTEGER;
-		TDinit, lastTDinit: OPT.Node;
+		TDinit, lastTDinit: OPT.Node;	(*global list of TDInit nodes*)
+		RecInit, lastRecInit: OPT.Node;	(*global list of Record Nodes (method code)*)
 		CondNodes: OPT.Node;
 		CondCount: SHORTINT;
 		UndefFlag, FixPhase: BOOLEAN;
@@ -114,14 +113,14 @@ MODULE OPP;	(** non-portable *)
 
 		FixList, FixLast: FixPtr;
 		ExtObj: OPT.Object;		(*for searching in the module scope*)
-		RecInit, lastRecInit: OPT.Node;
 		inc: OPT.Object;	(* the INC sproc, used by trace *)
 		ptrToRec: OPT.Struct;
 
 		ObjFix:  ARRAY 128 OF ObjFixDesc;
-		ObjCheck:  ARRAY 128 OF RECORD  obj: OPT.Object;  level: SHORTINT  END;
+		ObjCheck:  ARRAY 256 OF RECORD  obj: OPT.Object;  level: SHORTINT  END;
 		TypFix:  ARRAY 128 OF StructFixDesc;
 		nofCheck, nofObjFix, nofTypFix: LONGINT;
+
 
 	PROCEDURE err(n: INTEGER);
 	BEGIN OPM.err(n)
@@ -168,7 +167,7 @@ MODULE OPP;	(** non-portable *)
 	END DumpScope;
 
 	PROCEDURE GetSelf():OPT.Object;
-		VAR name: OPS.Name; self: OPT.Object;
+		VAR self: OPT.Object;
 	BEGIN
 		OPT.FindInScope(HiddenSelf, OPT.topScope, self);
 		RETURN self
@@ -381,7 +380,7 @@ MODULE OPP;	(** non-portable *)
 	END CheckObj;
 
 	PROCEDURE qualident(VAR id: OPT.Object);
-		VAR obj, self: OPT.Object; lev: SHORTINT; m: BOOLEAN;
+		VAR obj, self: OPT.Object; lev: LONGINT; m: BOOLEAN;
 	BEGIN (*sym = ident*)
 		OPT.Find(obj);  OPS.Get(sym);
 		IF (sym = period) & (obj # NIL) & (obj^.mode = Mod) THEN
@@ -411,7 +410,7 @@ MODULE OPP;	(** non-portable *)
 			END
 		END ;
 		id := obj;
-		IF (id = UndefObj) & (OPM.oberon1 IN OPM.options) THEN err(260) END
+		IF (id = UndefObj) & (OPM.oberon1 IN OPM.parserOptions) THEN err(260) END
 	END qualident;
 
 	PROCEDURE ConstExpression(VAR x: OPT.Node);
@@ -446,6 +445,7 @@ MODULE OPP;	(** non-portable *)
 			IF ~OPT.SYSimported THEN err(135) END;
 			OPS.Get(sym);
 			IF sym = ident THEN
+				IF OPM.WarnUnsafe THEN err(-666) END;
 				IF OPS.name = "C" THEN
 					sf := cdecl
 				ELSIF OPS.name = "WINAPI" THEN
@@ -457,13 +457,26 @@ MODULE OPP;	(** non-portable *)
 				ELSE
 					err(115)
 				END;
-				IF ~(sf IN allowed) THEN  sf := default; err(200)  END;
 				OPS.Get(sym)
 			ELSE
 				err(ident)
 			END;
 			CheckSym(rbrak)
+		ELSIF sym = lbrace THEN
+			OPS.Get(sym);
+			IF sym = ident THEN
+				IF OPS.name = "DELEGATE" THEN
+					sf := delegate
+				ELSE
+					err(115)
+				END;
+				OPS.Get(sym)
+			ELSE
+				err(ident)
+			END;
+			CheckSym(rbrace)
 		END;
+		IF (sf # default) & ~(sf IN allowed) THEN  sf := default; err(200)  END;
 		sysflag := SHORT(SHORT(sf))
 	END CheckSysFlag;
 
@@ -504,8 +517,9 @@ MODULE OPP;	(** non-portable *)
 							OPS.Get(sym);
 							IF sym = lparen THEN
 								ConstExpression(x);
-								IF x^.typ^.form IN {SInt} THEN OPT.topScope^.link^.prio := SHORT(SHORT(x^.conval^.intval))
-								ELSE err(50)	(* expression must be constant *)
+								IF x.class # Nconst THEN err(50)
+								ELSIF x^.typ^.form # SInt THEN err(220)
+								ELSE OPT.topScope^.link^.prio := SHORT(SHORT(x^.conval^.intval))
 								END
 							ELSE
 								x := OPB.NewIntConst(0)
@@ -527,11 +541,11 @@ MODULE OPP;	(** non-portable *)
 		IF ~local & objscope & ~(activeObj IN flag) THEN err(999) END;
 	END BlockMode;
 
-	PROCEDURE RecordType(VAR procdec: OPT.Node; VAR typ, banned: OPT.Struct; VAR owner: OPT.Object);
+	PROCEDURE RecordType(VAR typ, banned: OPT.Struct; owner: OPT.Object);
 		VAR base: OPT.Object;
 			sysflag: SHORTINT;
 			c: LONGINT;
-			statseq: OPT.Node; lev: SHORTINT;
+			procdec, statseq, p: OPT.Node; lev: SHORTINT;
 	BEGIN
 		typ := OPT.NewStr(Comp, Record); typ^.BaseTyp := NIL;
 		IF ptrToRec # NIL THEN	(*POINTER TO RECORD, ptr already declared*)
@@ -587,8 +601,11 @@ MODULE OPP;	(** non-portable *)
 		IF typ^.link = NIL THEN typ^.link := OPT.topScope^.right END;
 		ASSERT((statseq = NIL) OR (hasBody IN owner.conval.setval));		(*stat#NIL  ==> hasBody*)
 		IF (procdec # NIL) OR (hasBody IN owner.conval.setval) OR (statseq # NIL) THEN
+			p := CondNodes;
+			WHILE p # NIL DO p.obj.mnolev := 1; p := p.link END;	(*patch condition proc level*)
 			OPB.Enter(CondNodes, statseq, owner); CondNodes^.link := procdec; procdec := CondNodes;
 			procdec^.conval := OPT.NewConst(); procdec^.conval^.intval := c;
+			OPB.Link(RecInit, lastRecInit, procdec)
 		END;
 		level := lev; OPT.CloseScope;
 	END RecordType;
@@ -629,7 +646,7 @@ MODULE OPP;	(** non-portable *)
 		CheckSysFlag(sysflag, 0, {0, notag});
 		IF sym = times THEN
 			typ := OPT.NewStr(Comp, DynArr); typ^.sysflag := sysflag; OPS.Get(sym);
-			IF (OPM.oberon1 IN OPM.options) THEN err(271) END
+			IF (OPM.oberon1 IN OPM.parserOptions) THEN err(271) END
 		ELSIF sym # of THEN
 			Expression(x);
 			IF x.class = Nconst THEN
@@ -643,7 +660,7 @@ MODULE OPP;	(** non-portable *)
 				typ := OPT.NewStr(Comp, SDynArr); typ^.sysflag := sysflag; typ.n:=0;
 				IF (x.typ = NIL) OR ~(x^.typ^.form IN intSet) THEN typ.comp := StaticArr; err(68)
 				ELSE  typ^.link:=HiddenVar ("@dim", x)  END;
-				IF (OPM.oberon1 IN OPM.options) THEN err(271) END
+				IF (OPM.oberon1 IN OPM.parserOptions) THEN err(271) END
 			END
 		ELSE
 			typ := OPT.NewStr(Comp, OpenArr); typ^.sysflag := sysflag;
@@ -652,7 +669,7 @@ MODULE OPP;	(** non-portable *)
 		IF sym = comma THEN
 			OPS.Get(sym); typ.txtpos2 := OPM.errpos; ArrayType(typ.BaseTyp, banned)
 		ELSIF sym = of THEN
-			OPS.Get(sym); typ.txtpos2 := OPM.errpos; Type(typ.BaseTyp, banned);
+			OPS.Get(sym); typ.txtpos2 := OPM.errpos; TypeDecl(typ.BaseTyp, banned, NIL);
 			IF typ.BaseTyp = OPT.ToBeFixed THEN
 				NewFix(TypFix[nofTypFix], OPS.name);  TypFix[nofTypFix].typ := typ;  INC(nofTypFix)
 			END
@@ -661,13 +678,10 @@ MODULE OPP;	(** non-portable *)
 	END ArrayType;
 
 	PROCEDURE ObjectType(VAR typ, banned: OPT.Struct);
-		VAR id: OPT.Object; x: OPT.Node; link: OPT.Object;
 	BEGIN
 		typ := OPT.NewStr(Pointer, Basic);
 		typ.incomplete := TRUE; ptrToRec := typ; typ.txtpos2 := OPM.curpos;
-		RecordType(x, typ^.BaseTyp, banned, link);
-		OPB.Inittd(TDinit, lastTDinit, typ);
-		IF x # NIL THEN OPB.Link(RecInit, lastRecInit, x) END;
+		RecordType(typ^.BaseTyp, banned, NIL);
 		IF typ.BaseTyp = OPT.ToBeFixed THEN
 			NewFix(TypFix[nofTypFix], OPS.name);  TypFix[nofTypFix].typ := typ;  INC(nofTypFix)
 		END;
@@ -692,7 +706,7 @@ MODULE OPP;	(** non-portable *)
 		ELSE
 			IF sym= record THEN ptrToRec := typ END;	(*special case POINTER TO RECORD, all together*)
 			typ.txtpos2 := OPM.curpos;
-			Type(typ^.BaseTyp, banned);
+			TypeDecl(typ^.BaseTyp, banned, NIL);
 			IF typ.BaseTyp = OPT.ToBeFixed THEN
 				NewFix(TypFix[nofTypFix], OPS.name);  TypFix[nofTypFix].typ := typ;  INC(nofTypFix)
 			END;
@@ -723,14 +737,9 @@ MODULE OPP;	(** non-portable *)
 					ELSE EXIT
 					END
 				END ;
-				CheckSym(colon); Type(typ, OPT.notyp);
+				CheckSym(colon); TypeDecl(typ, OPT.notyp, NIL);
 				IF ~typ.incomplete & (typ.strobj = NIL) & (typ.comp # OpenArr) THEN err(-305) END;
-(* remove this
-				IF sysflag = 0 THEN
-					IF (typ.sysflag = notag) THEN err(200) END
-				ELSE
-*)
-				IF sysflag # 0 THEN
+				IF sysflag IN {stdcall, cdecl} THEN
 					IF (typ.comp IN {OpenArr, Record}) & (typ.sysflag # notag) THEN err(200) END;
 					IF typ.comp IN {DynArr, SDynArr} THEN err(200) END
 				END;
@@ -784,7 +793,7 @@ MODULE OPP;	(** non-portable *)
 	END FormalParameters;
 
 	PROCEDURE CheckAndFix(typ: OPT.Struct);
-		VAR lev: SHORTINT;
+		VAR lev: LONGINT;
 	BEGIN
 		WHILE typ.comp = SDynArr DO
 			lev := typ.link.mnolev;
@@ -793,9 +802,9 @@ MODULE OPP;	(** non-portable *)
 		END;
 	END CheckAndFix;
 
-	PROCEDURE TypeDecl(VAR x: OPT.Node; VAR typ, banned: OPT.Struct; VAR owner: OPT.Object);
+	PROCEDURE TypeDecl(VAR typ, banned: OPT.Struct; owner: OPT.Object);
 		VAR id: OPT.Object; name: OPS.Name;
-	BEGIN typ := OPT.undftyp; x := NIL;
+	BEGIN typ := OPT.undftyp;
 		IF sym < lparen THEN err(12);
 			REPEAT OPS.Get(sym) UNTIL sym >= lparen
 		END ;
@@ -824,14 +833,21 @@ MODULE OPP;	(** non-portable *)
 		ELSIF sym = array THEN
 			OPS.Get(sym); ArrayType(typ, banned);
 		ELSIF sym = record THEN
-			OPS.Get(sym); RecordType(x, typ, banned, owner);
+			OPS.Get(sym); RecordType(typ, banned, owner);
 			OPB.Inittd(TDinit, lastTDinit, typ); (*CheckSym(end)*)	(* --> done in RecordType *)
 		ELSIF sym = pointer THEN
 			OPS.Get(sym); PointerType(typ, banned);
 		ELSIF sym = object THEN
-			OPS.Get(sym); ObjectType(typ, banned)
+			OPS.Get(sym); ObjectType(typ, banned);
+			OPB.Inittd(TDinit, lastTDinit, typ.BaseTyp);
 		ELSIF sym = procedure THEN
-			OPS.Get(sym); typ := OPT.NewStr(ProcTyp, Basic); CheckSysFlag(typ^.sysflag, 0, {0, stdcall, cdecl});
+			IF OPM.WarnUnsafe THEN OPM.err(-1112) END;
+			OPS.Get(sym); typ := OPT.NewStr(ProcTyp, Basic);
+			IF OPM.OptimizeSelf THEN
+				CheckSysFlag(typ^.sysflag, 0, {0, stdcall, cdecl, delegate})
+			ELSE
+				CheckSysFlag(typ^.sysflag, 0, {0, stdcall, cdecl})
+			END;
 			IF sym = lparen THEN
 				OPS.Get(sym); OPT.OpenScope(level, NIL);
 				FormalParameters(typ^.link, typ^.BaseTyp, typ^.sysflag); OPT.CloseScope;
@@ -852,16 +868,6 @@ MODULE OPP;	(** non-portable *)
 			OPS.Get(sym)
 		END
 	END TypeDecl;
-
-	PROCEDURE Type(VAR typ, banned: OPT.Struct);
-		VAR x: OPT.Node; link: OPT.Object;
-	BEGIN
-		x := NIL;
-		TypeDecl(x, typ, banned, link);
-		IF x # NIL THEN
-			OPB.Link(RecInit, lastRecInit, x);
-		END;
-	END Type;
 
 	PROCEDURE selector(VAR x: OPT.Node);
 		VAR obj, proc: OPT.Object; y: OPT.Node; typ: OPT.Struct; name: OPS.Name;
@@ -954,7 +960,7 @@ MODULE OPP;	(** non-portable *)
 		END
 	END selector;
 
-	PROCEDURE ActualParameters(VAR aparlist: OPT.Node; fpar: OPT.Object; x: OPT.Node);
+	PROCEDURE ActualParameters(VAR aparlist: OPT.Node; fpar: OPT.Object);
 		VAR apar, last, aparret, lastret: OPT.Node;
 			b: BOOLEAN;
 	BEGIN aparlist := NIL; last := NIL; b := UndefFlag; lastret:=NIL; aparret:=NIL;
@@ -1034,7 +1040,7 @@ MODULE OPP;	(** non-portable *)
 	PROCEDURE StandProcCall(VAR x: OPT.Node);
 		VAR y: OPT.Node; m: SHORTINT; n: INTEGER;
 			flag, flag1: BOOLEAN;
-	BEGIN m := SHORT(SHORT(x^.obj^.adr)); n := 0;
+	BEGIN m := SHORT(SHORT(x^.obj^.adr)); n := 0; flag := FALSE;
 		IF ((m = sizefn) OR (m = lenfn)) & (OPB.verify # NIL) THEN
 			flag := TRUE; OPB.verify := NIL; flag1 := FixPhase; FixPhase := TRUE
 		END;
@@ -1212,16 +1218,15 @@ MODULE OPP;	(** non-portable *)
 					UndefFlag := UndefFlag OR (x.typ = NIL);
 					OPS.Get(sym);
 					IF UndefFlag THEN
-						ActualParameters(apar, fpar, x)
+						ActualParameters(apar, fpar)
 					ELSE
-						OPB.PrepCall(x, fpar); ActualParameters(apar, fpar, x);
+						OPB.PrepCall(x, fpar); ActualParameters(apar, fpar);
 						IF (x^.class = Nproc) & (x^.obj^.mode = CProc) THEN InlineProc (x, apar, fpar)
 						ELSE OPB.Call(x, apar, fpar)
 						END;
 					END;
 					CheckSym(rparen);
 					IF level > 0 THEN OPT.topScope^.link^.leaf := FALSE END
-			ELSIF  (x^.class = Nfield) & (x.obj.mode = TProc) & (x.obj^.typ # OPT.notyp) THEN err(lparen)
 			END
 		ELSIF (id#NIL) & (id.prio=127) THEN (* imported operator/ *)
 			 OPS.Get(sym); Factor(x); Resolve(id, name, x, y); OpCall(id, x, NIL)
@@ -1387,7 +1392,8 @@ MODULE OPP;	(** non-portable *)
 					INCL(proc.flag, OPT.used);
 					OPB.CheckParameters (proc.link.link, fwd.link.link, FALSE);
 					IF proc.link.mode # fwd.link.mode THEN err(115) END
-				ELSE OPB.CheckParameters (proc.link, fwd.link, TRUE)
+				ELSE
+					OPB.CheckParameters (proc.link, fwd.link, TRUE)
 				END;
 				IF proc.typ # fwd.typ THEN err(117) END;
 				IF ~redef THEN proc := fwd; OPT.topScope := fwd.scope
@@ -1396,7 +1402,7 @@ MODULE OPP;	(** non-portable *)
 			(* general checks *)
 			IF init & (proc.typ # OPT.notyp) THEN err(134) END;
 			IF init & (OPT.topScope.left.link.mode = Mod) & (proc.link # NIL) THEN err(133) END;
-			IF (OPM.oberon1 IN OPM.options) & (proc.typ # NIL) & (proc.typ.form = Comp) THEN err(270) END
+			IF (OPM.oberon1 IN OPM.parserOptions) & (proc.typ # NIL) & (proc.typ.form = Comp) THEN err(270) END
 		END GetParam;
 
 		PROCEDURE Body;
@@ -1458,8 +1464,8 @@ MODULE OPP;	(** non-portable *)
 				ELSE
 					selfmode := VarPar; selfname := HiddenSelf; selftype := rec; selfrec := rec
 				END;
-				IF (OPM.oberon1 IN OPM.options) THEN err(261) END
-			ELSIF (sym = lparen) & (OPM.oberon2 IN OPM.options) THEN
+				IF (OPM.oberon1 IN OPM.parserOptions) THEN err(261) END
+			ELSIF (sym = lparen) & (OPM.oberon2 IN OPM.parserOptions) THEN
 				mode := TProc; OPS.Get(sym);
 				IF sym = var THEN selfmode := VarPar; OPS.Get(sym) ELSE selfmode := Var END;
 				selfname := OPS.name; CheckSym(ident); CheckSym(colon);
@@ -1536,7 +1542,7 @@ MODULE OPP;	(** non-portable *)
 			END;
 			redef := (fwd # NIL) & (mode = TProc) & (fwd.mode = TProc) & (selfrec # fwd.link.typ) & (selfrec # fwd.link.typ.BaseTyp) ;
 			IF (fwd = NIL) OR redef THEN
-				IF ~(OPM.oberon2 IN OPM.options) OR (mode # TProc) OR (selftype # NIL) THEN
+				IF ~(OPM.oberon2 IN OPM.parserOptions) OR (mode # TProc) OR (selftype # NIL) THEN
 					OPT.Insert (name, proc)
 				ELSE proc := OPT.NewObj(); COPY(name, proc.name)
 				END;
@@ -1613,7 +1619,7 @@ MODULE OPP;	(** non-portable *)
 
 	PROCEDURE CheckBool(VAR x: OPT.Node);
 	BEGIN
-		IF (x^.class = Ntype) OR (x^.class = Nproc) THEN err(126); x := OPB.NewBoolConst(FALSE)
+		IF (x^.class = Ntype) OR (x^.class = Nproc) OR (x.class = Nfield) & (x.obj.mode = TProc) THEN err(126); x := OPB.NewBoolConst(FALSE)
 		ELSIF x.typ = NIL THEN err(120); x := OPB.NewBoolConst(FALSE)
 		ELSIF x^.typ^.form # Bool THEN err(120); x := OPB.NewBoolConst(FALSE)
 		END ;
@@ -1713,7 +1719,7 @@ OPM.LogWStr("  failed");*)
 						IF (z # NIL) & (z^.typ # OPT.notyp) THEN err(55) END
 					ELSE OPB.PrepCall(z, fpar);
 						IF sym = lparen THEN
-							OPS.Get(sym); ActualParameters(apar, fpar, z); CheckSym(rparen)
+							OPS.Get(sym); ActualParameters(apar, fpar); CheckSym(rparen)
 						ELSE apar := NIL;
 							IF fpar # NIL THEN err(65) END
 						END ;
@@ -1827,7 +1833,7 @@ OPM.LogWStr("  failed");*)
 				ELSE
 					IF ~UndefFlag THEN OPB.PrepCall(x, fpar) END;
 					IF sym = lparen THEN
-						OPS.Get(sym); ActualParameters(apar, fpar, x); CheckSym(rparen)
+						OPS.Get(sym); ActualParameters(apar, fpar); CheckSym(rparen)
 					ELSE apar := NIL;
 						IF (fpar # NIL) & ~UndefFlag THEN err(65) END
 					END ;
@@ -1880,8 +1886,12 @@ OPM.LogWStr("  failed");*)
 				IF UndefFlag THEN InsertFix (FCond, ts, x); UndefFlag := FALSE
 				ELSE CheckBool(x)
 				END;
-				CheckSym(do); StatSeq(y);
-				OPB.Construct(Nwhile, x, y); CheckSym(end)
+				CheckSym(do); StatSeq(y); CheckSym(end);
+				IF (x.class = Nconst) & (x.conval.intval = 0) THEN
+					x := NIL		(* WHILE FALSE -> dead code removal *)
+				ELSE
+					OPB.Construct(Nwhile, x, y)
+				END
 			ELSIF sym = repeat THEN
 				OPS.Get(sym); StatSeq(x);
 				IF sym = until THEN OPS.Get(sym);
@@ -1927,6 +1937,7 @@ OPM.LogWStr("  failed");*)
 							obj^.link := t
 						END ;
 						OPT.topScope := owner;
+						IF (t.mnolev = 0) & IsRecordScope() THEN t.mnolev := 1 END;	(*hack! make it a local variable*)
 						z := OPB.NewLeaf(t);
 						IF UndefFlag THEN
 							InsertFix (FExpr, ts, z); UndefFlag := FALSE
@@ -1987,16 +1998,18 @@ OPM.LogWStr("  failed");*)
 					ELSE err(ident)
 					END ;
 					pos := OPM.errpos; CheckSym(do); StatSeq(s); OPB.Construct(Nif, y, s); SetPos(y);
-					IF id.mnolev < 0 THEN
+					IF id = NIL THEN
+						EXIT
+					ELSIF id.mnolev < 0 THEN
 						id^.typ := idtyp
 					ELSE
 						IF idtyp # NIL THEN OPT.CloseScope; owner^.scope := OPT.topScope; idtyp := NIL END ;
 					END;
 					IF x = NIL THEN x := y; lastif := x ELSE OPB.Link(x, lastif, y) END ;
-					IF (sym = bar) & (OPM.oberon2 IN OPM.options) THEN OPS.Get(sym) ELSE EXIT END
+					IF (sym = bar) & (OPM.oberon2 IN OPM.parserOptions) THEN OPS.Get(sym) ELSE EXIT END
 				END;
 				e := sym = else;
-				IF e & (OPM.oberon2 IN OPM.options) THEN OPS.Get(sym); StatSeq(s) ELSE s := NIL END ;
+				IF e & (OPM.oberon2 IN OPM.parserOptions) THEN OPS.Get(sym); StatSeq(s) ELSE s := NIL END ;
 				OPB.Construct(Nwith, x, s); CheckSym(end);
 				IF e THEN x^.subcl := 1 END
 			ELSIF sym = exit THEN
@@ -2075,10 +2088,10 @@ OPM.LogWStr("  failed");*)
 			pos: LONGINT; vars, proc: BOOLEAN;
 
 	BEGIN first := NIL; last := NIL;
-		procdec := NIL; lastdec := NIL; proc := FALSE;  vars := FALSE;
+		procdec := NIL; lastdec := NIL; proc := FALSE; vars := FALSE;
 		LOOP
 			IF (sym = const) THEN
-				IF (OPM.oberon1 IN OPM.options) & proc THEN err(262) END;
+				IF (OPM.oberon1 IN OPM.parserOptions) & proc THEN err(262) END;
 				OPS.Get(sym);
 				WHILE sym = ident DO
 					OPT.Insert(OPS.name, obj); CheckMark(obj^.vis, FALSE);
@@ -2096,16 +2109,16 @@ OPM.LogWStr("  failed");*)
 				END
 			END ;
 			IF (sym = type) THEN
-				IF (OPM.oberon1 IN OPM.options) & proc THEN err(262) END;
+				IF (OPM.oberon1 IN OPM.parserOptions) & proc THEN err(262) END;
 				OPS.Get(sym);
 				WHILE sym = ident DO
 					OPT.Insert(OPS.name, obj); obj^.mode := Typ; obj^.typ := OPT.undftyp;
 					x := NIL;
 					CheckMark(obj^.vis, FALSE);
 					IF sym = eql THEN
-						OPS.Get(sym); TypeDecl(x, obj^.typ, obj^.typ, obj)
+						OPS.Get(sym); TypeDecl(obj^.typ, obj^.typ, obj)
 					ELSIF (sym = becomes) OR (sym = colon) THEN
-						err(eql); OPS.Get(sym); TypeDecl(x, obj^.typ, obj^.typ, obj)
+						err(eql); OPS.Get(sym); TypeDecl(obj^.typ, obj^.typ, obj)
 					ELSE err(eql)
 					END ;
 					IF obj.typ = OPT.ToBeFixed THEN		(*incomplete structure, add fixup, hidden*)
@@ -2114,11 +2127,6 @@ OPM.LogWStr("  failed");*)
 					ELSE  NewType(obj)
 					END;
 					IF obj.typ.incomplete THEN  NewCheck(obj)  ELSE  CheckObj(obj);  END;
-					IF x # NIL THEN	(* insert x into parse tree *)
-						x.obj := obj;		(* link code to the type *)
-						OPB.Link (RecInit, lastRecInit, x);
-						IF level = 0 THEN  OPB.Link (procdec, lastdec, RecInit);  RecInit := NIL  END;
-					END ;
 					IF ((obj^.typ^.comp = Record)OR(obj^.typ^.form = Pointer)&(obj^.typ^.BaseTyp^.comp = Record)) & (sym = ident) THEN
 						IF obj^.name # OPS.name THEN err(4)
 						END;
@@ -2136,7 +2144,7 @@ OPM.LogWStr("  failed");*)
 			END ;
 			IF (sym = var) OR (IsObjectScope() & (sym = ident)) THEN
 				vars := TRUE;
-				IF (OPM.oberon1 IN OPM.options) & proc THEN err(262) END;
+				IF (OPM.oberon1 IN OPM.parserOptions) & proc THEN err(262) END;
 				IF sym = var THEN OPS.Get(sym) END;
 				WHILE sym = ident DO
 					LOOP
@@ -2173,7 +2181,7 @@ OPM.LogWStr("  failed");*)
 						ELSE EXIT
 						END
 					END ;
-					CheckSym(colon); Type(typ, OPT.notyp);
+					CheckSym(colon); TypeDecl(typ, OPT.notyp, NIL);
 					IF IsObjectScope() & (OPT.topScope.link.typ = typ) THEN	err (58)	END;
 					OPT.MarkType(typ);
 					WHILE first # NIL DO
@@ -2199,9 +2207,6 @@ OPM.LogWStr("  failed");*)
 					IF lastdec = NIL THEN procdec := x ELSE lastdec^.link := x END ;
 					lastdec := x;
 				END ;
-				IF (RecInit # NIL) & (level = 0) THEN
-					OPB.Link (procdec, lastdec, RecInit);  RecInit := NIL
-				END;
 				CheckSym(semicolon)
 			END;
 			IF (sym < const) OR (sym > procedure) THEN EXIT END ;
@@ -2219,7 +2224,11 @@ OPM.LogWStr("  failed");*)
 				typ := owner.typ;
 				IF typ.ptr = NIL THEN  err(249)  END;
 				ASSERT(typ # NIL);
-				OPT.Insert(HiddenSelf, obj); obj^.mode := VarPar; obj^.typ := typ;
+				IF typ.ptr # NIL THEN
+					OPT.Insert(HiddenSelf, obj); obj^.mode := Var; obj^.typ := typ.ptr;
+				ELSE
+					OPT.Insert(HiddenSelf, obj); obj^.mode := VarPar; obj^.typ := typ;
+				END;
 				obj^.adr := OPM.errpos; obj.mnolev := 1 (*level*);
 				obj^.link := NIL;
 				owner^.link := obj;	(* set parameter list *)
@@ -2228,13 +2237,14 @@ OPM.LogWStr("  failed");*)
 			OPS.Get(sym);
 			StatBlock(statseq,  FALSE);
 			SetFlags (owner, {hasBody});
-			IF (OPM.trace IN OPM.options) & (level = 1) THEN  AddTraceCode(owner, statseq)  END;
+			IF (OPM.trace IN OPM.codeOptions) & (level = 1) THEN  AddTraceCode(owner, statseq)  END;
 			IF (CondNodes # NIL) & ~IsObjectScope() THEN
 				IF lastdec = NIL THEN procdec := CondNodes ELSE lastdec^.link := CondNodes END ;
 				lastdec := CondNodes
 			END;
 		ELSIF sym = code THEN 		(* iOPA *)
 			IF (owner.mode = CProc) & vars THEN  err(247)  END;
+			IF OPM.WarnUnsafe THEN err(-666) END;
 			pos := OPM.errpos; SetFlags(owner, {asmProc});
 			OPA.Assemble(statseq,  owner.vis # internal, owner.mode = CProc);
 			IF statseq # NIL THEN
@@ -2249,9 +2259,37 @@ OPM.LogWStr("  failed");*)
 			lastTDinit^.link := statseq; statseq := TDinit
 		END ;
 		IF (level = 0) & (RecInit # NIL) & IsModuleScope() THEN
-			OPB.Link (procdec, lastdec, RecInit);
+			lastRecInit.link := procdec; procdec := RecInit; RecInit := NIL;
 		END ;
 	END Block;
+
+	PROCEDURE CreateHiddenStructs;
+		VAR obj, fld1, fld2: OPT.Object;
+
+		PROCEDURE CreateStruct(name: ARRAY OF CHAR; VAR obj: OPT.Object);
+		VAR typ: OPT.Struct;
+		BEGIN
+			typ := OPT.NewStr(Comp, Record);
+			typ.BaseTyp := NIL; typ.sysflag := systemtype;
+			OPT.Insert(name, obj);
+			obj.mode := Typ; obj.typ := typ; obj.vis := internal; typ.strobj := obj; INCL(obj.flag, OPT.used);
+			obj.conval := OPT.NewConst()
+		END CreateStruct;
+
+	BEGIN
+		CreateStruct(OPT.Delegate, obj);
+		OPT.OpenScope(0, obj);
+		OPT.Insert("proc", fld1); fld1.mode := Fld; fld1.typ := OPT.linttyp; obj.typ.link := fld1; INCL(fld1.flag, OPT.used);
+		OPT.Insert("self", fld2); fld2.mode := Fld; fld2.typ := OPT.ptrtyp; fld2.link := fld1; INCL(fld2.flag, OPT.used);
+		OPT.CloseScope;
+		CheckObj(obj);
+
+		CreateStruct(OPT.HdPtrStruct, obj);
+		OPT.OpenScope(0, obj);
+		OPT.Insert("ptr", fld1); fld1.mode := Fld; fld1.typ := OPT.ptrtyp; obj.typ.link := fld1; INCL(fld1.flag, OPT.used);
+		OPT.CloseScope;
+		CheckObj(obj);
+	END CreateHiddenStructs;
 
 	PROCEDURE FullName(VAR fullname: OPS.Name);
 	VAR  i, j: LONGINT;
@@ -2293,6 +2331,9 @@ OPM.LogWStr("  failed");*)
 		IF sym = module THEN OPS.Get(sym) ELSE err(16) END ;
 		IF sym = ident THEN
 			FullName(modName);
+			IF OPM.traceprocs IN OPM.parserOptions THEN
+				OPM.LogWLn; OPM.LogWStr("M "); OPM.LogWStr(OPS.name)
+			END;
 			COPY(OPS.name, shortName);
 			OPT.Init(modName);
 			mod := OPT.NewObj(); mod.scope := OPT.topScope; OPT.topScope^.link := mod;
@@ -2313,7 +2354,7 @@ OPM.LogWStr("  failed");*)
 							IF sym = ident THEN FullName(impName) ELSE err(ident) END
 						ELSIF sym = period THEN  err(200)
 						END ;
-						IF (OPM.systemchk IN OPM.options) & (impName = "SYSTEM") THEN err(152)
+						IF (OPM.systemchk IN OPM.parserOptions) & (impName = "SYSTEM") THEN err(152)
 						ELSE
 							OPT.Import(aliasName, impName, modName)
 						END
@@ -2328,6 +2369,7 @@ OPM.LogWStr("  failed");*)
 			END ;
 			IF OPM.noerr THEN TDinit := NIL; lastTDinit := NIL; c := OPM.errpos;
 				RecInit := NIL; lastRecInit := NIL;
+				CreateHiddenStructs;
 				Block(procdec, statseq);
 				OPB.Enter(procdec, statseq, NIL); prog := procdec;
 				prog^.conval := OPT.NewConst(); prog^.conval^.intval := c;
@@ -2348,14 +2390,10 @@ OPM.LogWStr("  failed");*)
 			WHILE nofTypFix > 0 DO  DEC(nofTypFix);  TypFix[nofTypFix].scope := NIL;  TypFix[nofTypFix].typ := NIL   END;
 			WHILE nofCheck > 0 DO  DEC(nofCheck);  ObjCheck[nofCheck].obj := NIL  END;
 		END;
-		IF OPM.noerr & (OPM.warning IN OPM.options) THEN OPT.TraverseObjects(OPT.topScope.right) END;
+		IF OPM.noerr & (OPM.warning IN OPM.parserOptions) THEN OPT.TraverseObjects(OPT.topScope.right) END;
 	END Module;
 
 BEGIN
 	SignOnMessage := "Oberon Parser (Active & X Extensions) / prk";
 	OPS.name := "INC"; OPT.Find(inc)
 END OPP.
-
-(*
-	30.03.01	prk	option constants moved to OPM
-*)
