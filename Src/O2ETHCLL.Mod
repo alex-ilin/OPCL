@@ -1718,6 +1718,7 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 
 		PROCEDURE ListDependencies;
 		BEGIN
+			Texts.WriteString(W, stub);
 			name := modules;
 			WHILE name # NIL DO
 				Texts.WriteString(W, " "); Texts.WriteString(W, name.name);
