@@ -724,3 +724,156 @@ BEGIN LibBlockId := 0DBX;
 	nofreg := 0;
 	Register("Lib", NewLibrary)
 END Objects.
+
+(** Remarks:
+
+1. Objects and Messages
+Objects and the messages sent to them are both types in the Oberon system. Just as we can extend an object by defining an object-subtype, we can extend a message by defining a message sub-type. As root of the object and message type hierarchies we have the types Objects.Object and Object.ObjMsg respectively. We will refering to extensions of these types as Objects and Messages respectively. This way of organizing things allows us to send a message of any type to an object of any type (even when the receiving object might not make sense of the message). As an examples of an object we can mention the Frames of module Display (visual objects). Frames have a set of associated messages called frame messages (i.e. messages sent to frames). A base type called Display.FrameMsg is an extension of Object.ObjMsg and the base of the frame messages. The module Objects define the object messages, i.e. the messages that all objects understand. Objects are allocated on the heap and messages temporarily on the stack.
+
+2. Message Handlers
+Message handlers process the message sent to an object. A message handler is a procedure with the definition Objects.Handler. A message handler receives as first parameter the object the message is sent to, and as second parameter the message itself. The message handler does message type tests to discrimate between the different message types it receives, and acts accordingly to each message type (most of the actions are prescribed the messages defined in modules like Objects and Display). The message handler of a newly created object is "installed" in an object by assigning it to the field handle of the object. A typical handler might look as follows:
+
+	PROCEDURE MyHandler(obj: Object; VAR M: ObjMsg);
+	BEGIN
+		IF M IS Objects.AttrMsg THEN
+			WITH M: Objects.AttrMsg DO
+				...
+			END
+		ELSIF M IS Objects.CopyMsg THEN
+			WITH M: Objects.CopyMsg DO
+				...
+			END
+		ELSE
+			(* message not understood by handler. *)
+		END
+	END MyHandler;
+
+To create a new object, we first have to introduce a new object type, allocate a new instance on the heap and attach the message handler:
+
+	TYPE
+		MyObj = POINTER TO MyObjDesc;
+		MyObjDesc = RECORD (Objects.ObjDesc)	(* Extension of Objects.ObjDesc. *)
+			A, B: LONGINT;	(* Object instance variables. *)
+		END;
+
+	PROCEDURE CreateObj;
+	VAR obj: MyObj;
+	BEGIN
+		NEW(obj);	(* allocate a new object on the heap *)
+		obj.handle := MyHandler;	(* attach the message handler. *)
+	END CreateObj;
+
+Here we created a new object type with two additional instance variables A and B. To open up access to the instance variables in the message handler, we will need to modify the message handler slightly:
+
+	PROCEDURE MyHandler(obj: Object; VAR M: ObjMsg);
+	BEGIN
+		WITH obj: MyObj DO	(* Open up access to the instance variables of MyObj. *)
+			IF M IS Objects.AttrMsg THEN
+				WITH M: Objects.AttrMsg DO
+					...
+				END
+			ELSIF M IS Objects.CopyMsg THEN
+				WITH M: Objects.CopyMsg DO
+					...
+				END
+			ELSE
+				(* message not understood by handler. *)
+			END
+		END
+	END MyHandler;
+
+This change also means that MyHandler can only be safely attached to objects (or extensions) of type MyObj; attaching the handler to objects of other types will cause a runtime exception (trap) when trying to open access to the fields of MyObj. Sending a message to an object involves allocating it on the stack, filling out the message fields, and calling the object message handler. For example:
+
+	VAR obj: MyObj;
+
+	PROCEDURE GetName;
+	VAR M: Objects.AttrMsg;	(* Allocate message on the stack. *)
+	BEGIN
+		M.id := Objects.get; M.name := "Name"; M.res := -1;	(* Fill out message fields *)
+		obj.handle(obj, M);	(* Send message. *)
+		Out.String(M.s); Out.Ln;	(* Process result. *)
+	END GetName;
+
+You are allowed to define new message types for your own objects, in a similar manner as shown in the message definitions above. Note how many of the messages have id fields; these indicate different sub-operations a message requests. The id values are declared per message as INTEGER constants at the beginning of the module.
+
+3. Forwarding and Broadcasts
+Objects may forward messages to other objects. This is typically done when an object cannot handle a message itself or does not even know the message. Sometimes messages are sent in such a way that each object does some handle of a message, and then forwards it anyway to all other objects it controls. This we call message broadcasting. Messages thus pass from one object to another in ways only known to the objects themselves. The route a message follows we call the message path.
+
+4. Time stamps
+During a message broadcast, more than one message path may lead to the same object, resulting in the object receiving a the message many times (i.e. exactly once for each message path). To allow an object to determine if it has already processed a message, each message that is broadcast is given a timestamp. The receiving object remembers the message timestamp in its field stamp, and can compare it against a later message received. Due to message broadcasts occuring during a message broadcast itself (i.e. recursive broadcasts), you should not assume that message arrive in time stamp sequence. The stamp is a LONGINT value incremented on each broadcast by the procedure Stamp.
+
+5. The Message Thread
+The message thread informs an object of the path a message followed to reach it, and can be used to implement path dependent behaviour. The dlink field in the ObjMsg points to the last forwarder of the message. The dlink field of the latter object contains the previous object in the path, and so onwards until the beginning of the path (the thread points backwards). Due to recursive message broadcasts the dlink field in the message and the objects themselves should be saved on the stack before the values are changed:
+
+	(* Forward a message from one object to another. *)
+	PROCEDURE SendMsg(from, to: Objects.Object; VAR M: Objects.ObjMsg);
+	VAR p, p0; Objects.Object;
+	BEGIN
+		p := from.dlink; p0 := M.dlink; (* save *)
+		from.dlink := M.dlink; (* hook sender in dlink chain *)
+		M.dlink := from; (* set sender of the message *)
+		to.handle(to, M);
+		from.dlink := p; M.dlink := p0 (* restore *)
+	END SendMsg;
+
+A message sender may refuse to add itself to the message thread (for optimization purposes). This has no effect but to make it invisible to further recipients in the message path. The message thread is typically used in the display space (see module Display) to find out how a message travelled from the display root to an object located somewhere in the display space.
+
+6. The slink field
+The slink field links objects together in a list so that they can be passed around as a group. Never assume that the slink list remains the same before and after a message broadcast.
+
+7. Libraries
+Libraries are indexed collections of objects. An object belonging to a library is said to be bound to the library (otherwise it is free). When bound, an objects obtains an index or reference number (>= 0) in its library (and its lib and ref fields are set accordingly). The Objects module implements the standard object libraries. These allow you to store the library and its contents in an atomic action to disk. On disk, reference numbers instead of pointers are used to refer to objects. Thus pointers and reference numbers are swizzled (exchanged) when loading or storing libraries. The procedures Gadgets.ReadRef and Gadgets.WriteRef use the library mechanism to transparently read and write object pointers to disk. The library dictionary mechanism allows you to attach names to objects (more concretely to reference numbers). An object belonging to public library L and having the name O in the dictionary, is refered to as "L.O" (note the similarity with "M.P"). Sometimes the dictionary is also used to attach keys (< 0) to strings. Keys are used to save string space when storing libraries. Libraries are divided into public and private libraries. Public libraries are named (i.e. L.name # "") and are cached in memory on loading. The garbage collector will uncache a library automatically if it is not required any more. The Libraries.Panel allow you to manipulate the contents of public libraries. Private libraries are primarily used as a means to make objects persistent in documents and are never cached. The default public library file extension is "Lib". It is possible to add new types of libraries by registering new library extensions and the associated library generator.
+
+8. The Object Messages
+All objects should implement handlers for the so-called object messages defined in this module. The object messages are the LinkMsg (for structure building and exploration), the CopyMsg (for copying an object), the BindMsg (for binding an object to a library), the AttrMsg (for setting and getting attributes), the FileMsg (for loading and storing), and the FindMsg (for locating named objects).
+
+9. The LinkMsg
+The LinkMsg is used to link objects between each other i.e. setting a pointer in one object to point to another. The links must be identified by name. Most displayable gadgets have a "Model" link that points to a model gadget.
+
+10. The CopyMsg
+Shallow copy means copying an object but reusing its descendants, and deep copy means copying all objects reachable from a certain root object. Due to the DAG nature of the display space, the deep copy message arrives once or more times at an object, in which case it only should copy itself once to guarantee structure preserving copies. The following shows that an object should cache the first copy that it makes of itself in the dlink field, which is then returned on receiving the message a second time:
+
+		VAR F0: Frame; (* the copy goes here *)
+
+		IF M IS Objects.CopyMsg THEN
+			WITH M: Objects.CopyMsg DO
+				IF M.stamp = F.stamp THEN M.obj := F.dlink	(* copy msg arrives again *)
+				ELSE	(* first time copy message arrives *)
+					NEW(F0); F.stamp := M.stamp; F.dlink := F0; CopyFrame(M, F, F0); M.obj := F0
+				END
+			END
+		END
+
+11. The BindMsg
+The BindMsg is a request to an object to bind itself to a library. By convention, an object can migrate from library to library, except when bound to a public library. Binding allocates a reference number to an object which is conveniently used as a pointer alias between objects stored in a file.
+
+	PROCEDURE BindObj(obj: Objects.Object; lib: Objects.Library);
+	VAR ref: INTEGER; name: ARRAY 32 OF CHAR;
+	BEGIN
+		IF lib # NIL THEN
+			IF (obj.lib = NIL) OR (obj.lib.name[0] = 0X) & (obj.lib # lib) THEN (* free, or belongs to a private library *)
+				lib.GenRef(lib, ref);	(* allocate reference number *)
+				IF ref >= 0 THEN	(* successful *)
+					lib.PutObj(lib, ref, obj);
+				END
+			END
+		END
+	END BindObj;
+
+12. The AttrMsg
+The attribute message is used to enumerate, set or retrieve an object attribute. The class field of the AttrMsg indicate what the type of an attribute is. Each object should have a Name attribute and a Gen attribute (both of type String). The name attribute refers to the intrinsic name of an object (it should not be confused with the name the object might have in a dictionary). Copying an object results in two objects with the same names. The FindMsg locates an object with a certain intrinsic name. The Gen attribute indicates the name of the object generator (in the form "M.P"). Calling the generator of an object results in the freshly created object attached to Objects.NewObj, from where it is picked up by commands like Gadgets.Insert.
+
+13. The FileMsg
+The FileMsg is a request to an object to write or read its state to or from a Rider. An object should always read and write the same number of bytes, otherwise traps may result. It is recommended to use version numbers to distinguish objects of different generations from each other and so allow for smooth upgrading to new file formats for older objects. The FileMsg is typically used when reading or writing a library from or to disk.
+
+14. The FindMsg
+The FindMsg is a request to an object to locate the object with the indicated intrinsic name. Should an object not know of an object with such a name, it should forward the message to all objects it controls (children). By convention, searching should be done in a bread-first manner between descendants of a container.
+
+15. Keys
+Each library has a dictionary of (key, name) pairs. The key is either positive or zero, in which case it is regarded as a reference number in the library (with associated object name), or negative, in which case it is simply a short way of refering to a string (an atom). The latter reduces the space used when the same string appears many times in a library file.
+
+16. Dummies
+Dummies are objects created in place of objects that cannot be loaded into memory (module missing). Pointers to Dummies are often set to NIL by the application itself.
+
+17. Extended Libraries
+It is possible to add new library types to the system. New types are distinguished by filename extensions that are registered by Objects.Register. The NewProc is called by Objects.ThisLibrary to create an empty instance of the new library type. The name field is filled in, after which the Load procedure of the library is called to load the library from disk. In accordance, the Store procedure stores the library under its name to disk. The LoadLibrary and StoreLibrary procedures implement the default behaviour for the standard object libraries. *)

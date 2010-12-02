@@ -419,3 +419,58 @@ BEGIN
 	theContext := NIL; inDispatch := FALSE; displayTrap := NIL;
 	Modules.InstallTermHandler(Shutdown)
 END Exceptions.
+
+(**
+	TYPE
+		MyException = RECORD (Exceptions.UserException)
+		END;
+
+	PROCEDURE P();
+		VAR e: MyException;
+		PROCEDURE Handler(VAR e: Exceptions.Exception): LONGINT;
+		BEGIN
+			IF e IS MyException THEN
+				...
+				RETURN Exceptions.Ignore / Forward / Abort
+			ELSE
+				RETURN Exceptions.Abort / Forward
+			END
+		END Handler;
+	BEGIN
+		...
+		Exceptions.Raise(e)
+		...
+
+
+	PROCEDURE P();
+		VAR e: MyException; context: Context;
+		PROCEDURE Handler(VAR e: Exceptions.Exception): LONGINT;
+		BEGIN
+			IF e IS MyException THEN
+				...
+				RETURN Exceptions.ReturnFail(context)
+			ELSE
+				RETURN Exceptions.Abort / Forward
+			END
+		END Handler;
+	BEGIN
+		IF ~Exceptions.Failed(context) THEN (* no error occured *)
+			...
+			Exceptions.Raise(e)
+			...
+		ELSE (* error occured and Exceptions.ReturnFail was called *)
+			...
+		END
+
+
+	PROCEDURE P();
+		VAR context: Context;
+	BEGIN
+		IF ~Exceptions.Failed(context) THEN (* no error occured *)
+			...
+			Exceptions.Fail(context)
+			...
+		ELSE (* Exceptions.Fail was called *)
+			...
+		END
+*)

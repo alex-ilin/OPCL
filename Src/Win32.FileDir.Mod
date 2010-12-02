@@ -1,3 +1,5 @@
+(* Copyright (c) 1994 - 2000 Emil J. Zeller *)
+
 MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz *)
 	IMPORT SYSTEM, Kernel32, Kernel, Registry;
 
