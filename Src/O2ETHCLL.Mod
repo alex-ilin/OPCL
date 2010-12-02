@@ -1646,10 +1646,9 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 				RETURN Exceptions.Forward
 			END
 		END Handler;
-	BEGIN
-		Init();
-		IF ~Exceptions.Failed(context) THEN
-			ScanLinkText(T);
+
+		PROCEDURE CreateFile;
+		BEGIN
 			Texts.WriteString(W, "linking "); Texts.WriteString(W, image);
 			Texts.WriteLn(W); Texts.Append(Texts.Log, W.buf);
 			sections := 3; (* .text, .idata, .rsrc *)
@@ -1715,6 +1714,13 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			END;
 			Files.WriteBytes(R, rsrc, SIZE(ImageSectionHeader));
 			Files.Register(F); Texts.WriteString(W, " done"); done := TRUE
+		END CreateFile;
+
+	BEGIN
+		Init();
+		IF ~Exceptions.Failed(context) THEN
+			ScanLinkText(T);
+			CreateFile;
 		ELSE
 			Texts.WriteString(W, error.msg); done := FALSE;
 		END;
