@@ -322,6 +322,9 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 		icons: IconList;
 		cursors: CursorList;
 		relocs: ARRAY MaxRelocs OF LONGINT; nRelocs: LONGINT;
+		dependencyListOnly: BOOLEAN; (* When dependencyListOnly = TRUE, only the
+			list of files required for linking is output. Modules are listed in
+			the order of their link order, i.e. as listed in the Link-file. *)
 
 	PROCEDURE Error(str1, str2: ARRAY OF CHAR);
 	BEGIN
@@ -1643,10 +1646,9 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 				RETURN Exceptions.Forward
 			END
 		END Handler;
-	BEGIN
-		Init();
-		IF ~Exceptions.Failed(context) THEN
-			ScanLinkText(T);
+
+		PROCEDURE CreateFile;
+		BEGIN
 			Texts.WriteString(W, "linking "); Texts.WriteString(W, image);
 			Texts.WriteLn(W); Texts.Append(Texts.Log, W.buf);
 			sections := 3; (* .text, .idata, .rsrc *)
@@ -1712,6 +1714,38 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			END;
 			Files.WriteBytes(R, rsrc, SIZE(ImageSectionHeader));
 			Files.Register(F); Texts.WriteString(W, " done"); done := TRUE
+		END CreateFile;
+
+		PROCEDURE ListDependencies;
+		BEGIN
+			Texts.WriteString(W, stub);
+			name := modules;
+			WHILE name # NIL DO
+				Texts.WriteString(W, " "); Texts.WriteString(W, name.name);
+				Texts.WriteString(W, Modules.extension);
+				name := name.next
+			END;
+			name := icons;
+			WHILE name # NIL DO
+				Texts.WriteString(W, " "); Texts.WriteString(W, name(IconList).value);
+				name := name.next
+			END;
+			name := cursors;
+			WHILE name # NIL DO
+				Texts.WriteString(W, " "); Texts.WriteString(W, name(CursorList).value);
+				name := name.next
+			END;
+		END ListDependencies;
+
+	BEGIN
+		Init();
+		IF ~Exceptions.Failed(context) THEN
+			ScanLinkText(T);
+			IF dependencyListOnly THEN
+				ListDependencies;
+			ELSE
+				CreateFile;
+			END;
 		ELSE
 			Texts.WriteString(W, error.msg); done := FALSE;
 		END;
@@ -1732,6 +1766,7 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 		Console.WriteLn();
 		Console.WriteString("Run 'O2ETHCLL /?' for this information.");	Console.WriteLn();
 		Console.WriteString("Run 'O2ETHCLL file' to link executable.");	Console.WriteLn();
+		Console.WriteString("Run 'O2ETHCLL file /d' to output dependency list only.");	Console.WriteLn();
 		Console.WriteLn();
 		Console.WriteString("file - filename of the 'link' project file");	Console.WriteLn();
 	END About;
@@ -1769,6 +1804,8 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			IF ch = "?" THEN
 				About();
 				RETURN FALSE;
+			ELSIF ch = "d" THEN
+				dependencyListOnly := TRUE;
 			ELSIF (ch >= " ") THEN
 				Console.WriteString(WrongParamSpecified);	Console.WriteLn;
 				Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
@@ -1778,10 +1815,9 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 				Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 				RETURN FALSE;
 			END;
-		ELSE
-			i := j; (* There were no switch *)
-			ch := CmdLine.text[i];
 		END;
+		i := j;
+		ch := CmdLine.text[i];
 		(* look for filename *)
 		WHILE (ch <= " ") & (ch # 0X) DO
 			INC(i);	ch := CmdLine.text[i]; (* Skip blanks in front of filename *)
@@ -1797,7 +1833,9 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			Console.WriteString(SlashQuestionForHelp); Console.WriteLn;
 			RETURN FALSE;
 		END;
-		Console.WriteString("file=");	Console.WriteString(name);	Console.WriteLn();
+		IF ~dependencyListOnly THEN
+			Console.WriteString("file=");	Console.WriteString(name);	Console.WriteLn();
+		END;
 		RETURN TRUE;
 	END GetOptions;
 
@@ -1806,6 +1844,7 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 		VAR T: Texts.Text; done: BOOLEAN;
 			name : FileDir.FileName;
 	BEGIN
+		dependencyListOnly := FALSE;
 		IF GetOptions(name) THEN
 			NEW(T); Texts.Open(T, name);
 			IF T.len # 0 THEN

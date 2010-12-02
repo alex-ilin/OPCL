@@ -1981,6 +1981,4 @@ END Close;
 BEGIN
 	Texts.OpenWriter(W);
 	COPY(Modules.extension, extension);
-	Texts.WriteString(W, "Static BootLinker for OM Object Files / prk"); Texts.WriteLn(W);
-	Texts.Append(Texts.Log, W.buf)
 END BootLink.
