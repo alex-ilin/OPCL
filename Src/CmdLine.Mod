@@ -21,15 +21,14 @@ MODULE CmdLine;
 	BEGIN
 		i := 0;
 		adr := Kernel32.GetCommandLine();
-		REPEAT
-			SYSTEM.GET(adr, ch);
-			INC(adr);
+		SYSTEM.GET(adr, ch);
+		WHILE (ch # 0X) & (i < length - 1) DO
 			text[i] := ch;
 			INC(i);
-		UNTIL (ch = 0X) OR (i = length);
-		IF i < length THEN
-			text[i] := ch;
+			INC(adr);
+			SYSTEM.GET(adr, ch);
 		END;
+		text[i] := 0X;
 	END Get;
 
 (*****************************)
