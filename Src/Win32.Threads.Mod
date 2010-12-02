@@ -42,12 +42,11 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 		Event* = POINTER TO RECORD (Kernel32.Object) END;
 
 	VAR
-		threads, aliens: Thread;
+		threads, aliens, this0: Thread;
 		mtxs: Mutex;
 		oberonLoop*: Thread; (** thread executing Oberon.Loop *)
 		threaded: BOOLEAN;
 		moduleCS: Kernel32.CriticalSection;
-		break: ARRAY 16 OF CHAR;
 
 (** Wait for ownership of the mutex. *)
 	PROCEDURE Lock*(mtx: Mutex);
@@ -169,6 +168,7 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 		WHILE (t # NIL) & (t.id # id) DO
 			t := t.next
 		END;
+		this0 := t;
 		RETURN t
 	END this;
 
@@ -220,7 +220,7 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 			ret := Kernel32.DuplicateHandle(proc, t.handle, proc, t.handle, {}, Kernel32.False, {Kernel32.DuplicateSameAccess});
 			ASSERT(ret # Kernel32.False);
 			t.cont.ContextFlags := Kernel32.ContextFull;
-			ret := Kernel32.GetThreadContext(t.handle, t.cont); ASSERT(ret # Kernel32.False);
+			ret := Kernel32.GetThreadContext(t.handle, t.cont);
 			t.stackBottom := StackBottom();
 			t.next := threads; threads := t;
 			Kernel.RegisterObject(t, FinalizeThread, TRUE)
@@ -377,15 +377,8 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 					EXIT
 				END
 			END;
-			(* push cont.Eip *) break[0] := 68X; SYSTEM.MOVE(SYSTEM.ADR(cont.Eip), SYSTEM.ADR(break[1]), 4);
-			(* push ebp *) break[5] := 055X;
-			(* mov ebp, esp *) break[6] := 08BX; break[7] := 0ECX;
-			(* push 13 *) break[8] := 06AX; break[9] := 0DX;
-			(* int 3 *) break[10] := 0CCX;
-			(* mov esp, ebp *) break[11] := 08BX; break[12] := 0E5X;
-			(* pop ebp *) break[13] := 05DX;
-			(* ret *) break[14] := 0C3X;
-			cont.Eip := SYSTEM.ADR(break[0]);
+			(* set trap flag, switches thread to single-step mode *)
+			INCL(SYSTEM.VAL(SET, cont.EFlags), 8);
 			Kernel32.SetThreadContext(t.handle, cont);
 			Kernel32.ResumeThread(t.handle);
 			INC(Kernel.GClevel);
@@ -569,7 +562,7 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 	PROCEDURE EndAtomic*();
 		VAR t, tt: Thread;
 	BEGIN
-		tt := this();
+		tt := this0;
 		ASSERT(threaded & tt.atomic, 36);
 		t := threads;
 		WHILE t # NIL DO
@@ -587,15 +580,33 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 		VAR
 			t: Thread; cont: Kernel32.Context;
 			sp, p, bottom: Kernel32.ADDRESS;
+			(*handle: Kernel32.HANDLE;*) res: Kernel32.BOOL;
 	BEGIN
 		t := threads;
 		WHILE t # NIL DO
 			cont.ContextFlags := Kernel32.ContextControl + Kernel32.ContextInteger;
-			Kernel32.GetThreadContext(t.handle, cont);
-			Kernel.Candidate(cont.Edi); Kernel.Candidate(cont.Esi);
-			Kernel.Candidate(cont.Ebx); Kernel.Candidate(cont.Edx);
-			Kernel.Candidate(cont.Ecx); Kernel.Candidate(cont.Eax);
-			sp := cont.Esp; ASSERT(cont.Ebp <= t.stackBottom);
+			IF t # this0 THEN
+				(* THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION
+				handle := Kernel32.OpenThread({3, 6}, Kernel32.False, t.id);
+				IF handle # Kernel32.NULL THEN
+				*)
+					res := Kernel32.GetThreadContext(t.handle, cont);
+					IF res = Kernel32.False THEN (* hack for Windows 7 Beta *)
+						cont.Esp := t.stackBottom
+					END;
+				(*
+					Kernel32.CloseHandle(handle)
+				ELSE
+					Kernel32.Str("CheckStacks OpenThread"); Kernel32.Ln()
+				END;
+				*)
+				Kernel.Candidate(cont.Edi); Kernel.Candidate(cont.Esi);
+				Kernel.Candidate(cont.Ebx); Kernel.Candidate(cont.Edx);
+				Kernel.Candidate(cont.Ecx); Kernel.Candidate(cont.Eax);
+				sp := cont.Esp
+			ELSE
+				SYSTEM.GETREG(SYSTEM.ESP, sp)
+			END;
 			bottom := t.stackBottom;
 			WHILE sp < bottom DO
 				SYSTEM.GET(sp, p);
@@ -626,7 +637,7 @@ MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 	BEGIN
 		Kernel32.InitializeCriticalSection(moduleCS);
 		Kernel32.EnterCriticalSection(moduleCS);
-		threads := NIL; aliens := NIL; oberonLoop := NIL; threaded := FALSE; mtxs := NIL;
+		threads := NIL; aliens := NIL; oberonLoop := NIL; threaded := FALSE; mtxs := NIL; this0 := NIL;
 		Kernel.CheckStacks := CheckStacks; Kernel.BeginAtomic := BeginAtomic; Kernel.EndAtomic := EndAtomic;
 		threaded := TRUE; INC(Kernel.GClevel); (* enable GC *)
 		Modules.InstallTermHandler(Shutdown);

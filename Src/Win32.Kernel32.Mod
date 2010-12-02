@@ -467,6 +467,8 @@ MODULE Kernel32; (** non-portable / source: Win32.Kernel32.Mod *)	(* ejz *)
 		LocalFileTimeToFileTime-: PROCEDURE [WINAPI] (lpLocalFileTime: FileTime; VAR lpFileTime: FileTime): BOOL;
 		(** The MoveFileEx function renames an existing file or directory. *)
 		MoveFileEx-: PROCEDURE [WINAPI] (lpExistingFileName, lpNewFileName: ARRAY [NOTAG] OF CHAR; dwFlags: SET): BOOL;
+		(** Opens an existing thread object. *)
+		OpenThread-: PROCEDURE [WINAPI] (dwDesiredAccess: SET; bInheritHandle: BOOL; dwThreadId: LONGINT): HANDLE;
 		(** The OutputDebugString function sends a string to the debugger for the current application. *)
 		outputDebugString-: PROCEDURE [WINAPI] (lpOutputString: ARRAY [NOTAG] OF CHAR);
 		(** The PurgeComm function discards all characters from the output or input buffer of a specified communications resource. *)

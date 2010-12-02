@@ -879,7 +879,7 @@ BEGIN
 	IF isEXE THEN
 		hInstance := Kernel32.GetModuleHandle(NIL)
 	END;
-	version := "Win32 2.5 (19.12.2004)";
+	version := "Win32 2.5 (7.2.2009)";
 	Kernel32.InitializeCriticalSection(moduleCS);
 	InitHeap; InitRuntime
 END Kernel.

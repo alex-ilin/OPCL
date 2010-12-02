@@ -243,7 +243,7 @@ MODULE Objects; (** portable / source: Win32.Objects.Mod *)	(* JG 21.9.93/commen
 					IF name = L.name THEN
 						L.next := FirstLib.next; FirstLib.next := L
 					ELSE
-						NEW(A); COPY(name, A.name); A.lib := L; A.next := FirstAlias.next; FirstAlias.next := A;
+						NEW(A); COPY(name, A.name); A.lib := L; A.next := FirstAlias.next; FirstAlias.next := A
 					END
 				END
 			END
