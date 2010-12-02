@@ -174,7 +174,7 @@ MODULE Registry; (** non-portable / source: Win32.Registry.Mod *)	(* ejz *)
 	END OutputFileString;
 
 	PROCEDURE InitConsole();
-		VAR rect: Kernel32.SmallRect; file: ARRAY 260 OF CHAR; con: ARRAY 64 OF CHAR; i, j: LONGINT;
+		VAR rect: Kernel32.SmallRect; file: ARRAY Kernel32.MaxPath OF CHAR; con: ARRAY 64 OF CHAR; i, j: LONGINT;
 	BEGIN
 		Kernel32.OutputString := NIL; logfile := FALSE; hFile := Kernel32.InvalidHandleValue;
 		GetKeyValue(CurrentUser, oberonSystem, "Console", con);
@@ -191,7 +191,7 @@ MODULE Registry; (** non-portable / source: Win32.Registry.Mod *)	(* ejz *)
 				hFile := Kernel32.GetStdHandle(Kernel32.STDOutput)
 			ELSIF CAP(con[0]) = "F" THEN (* log file *)
 				con := "Oberon.Log"; logfile := TRUE;
-				Kernel32.GetModuleFileName(Kernel.hInstance, file, 260);
+				Kernel32.GetModuleFileName(Kernel.hInstance, file, Kernel32.MaxPath);
 				i := 0; j := 0;
 				WHILE file[i] # 0X DO
 					IF file[i] = "\" THEN j := i+1 END;
