@@ -14,7 +14,7 @@ MODULE Texts; (** portable *)	(*JG 23.8.94*)
 (** The Texts module implements the text abstract data type. Texts are sequences of characters and objects, with different colors, different fonts, and vertical offsets.
 *)
 
-IMPORT Files, Objects, Fonts, Reals, Strings, Console;
+IMPORT Files, Objects, Console, Fonts, Reals, Strings;
 
 CONST
 	(** Scanner symbol classes.*)
@@ -113,7 +113,7 @@ TYPE
 	END;
 
 VAR
-    Log* : Text;
+	Log*: Text;
 	TextBlockId* (** First character of a text block. *), DocBlockId, NoSpex, NoSpex2, TextSpex: CHAR;
 	Wfile: Files.File; R: Files.Rider; DelBuf: Buffer; H: Objects.Handler;
 	nameChars: ARRAY 256 OF BOOLEAN; obs: Objects.Library;
@@ -373,9 +373,9 @@ BEGIN
 	f := Files.Old(name);
 	IF f # NIL THEN
 		Files.Set(R, f, 0); Files.Read(R, ch);
-		(*IF ch = DocBlockId THEN ReadDocHeader(R, ch);  END;
-		IF (ch = TextBlockId) OR (ch = OldTextBlockId) THEN Load(T, f, Files.Pos(R), len);
-		ELSE LoadAscii(T, f);
+		(*IF ch = DocBlockId THEN ReadDocHeader(R, ch) END;
+		IF (ch = TextBlockId) OR (ch = OldTextBlockId) THEN Load(T, f, Files.Pos(R), len)
+		ELSE LoadAscii(T, f)
 		END*)
 		LoadAscii(T, f);
 	ELSE GenNew(T);
@@ -454,12 +454,12 @@ BEGIN
 		DelBuf.last.next := NIL; DelBuf.len := end - beg;
 		per.prev := pbr.prev; pbr.prev.next := per;
 		T.len := T.len - end + beg;
-		(*M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := 0;*)
-		(*Display.Broadcast(M); T.stamp := M.stamp*)
+		(*M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := 0;
+		Display.Broadcast(M); T.stamp := M.stamp*)
 	END
 END Delete;
 
-(** Replace [beg, end[ of T with contents of buffer B. B is emptied.*)
+(** Replace [beg, end[ of T with contents of buffer B. B is emptied. *)
 PROCEDURE Replace*(T: Text; beg, end: LONGINT; B: Buffer);
 	VAR (*M: UpdateMsg*) pb, pe, pbr, per, pl, qb, qe: Piece; orgb, orge: LONGINT;
 BEGIN
@@ -489,7 +489,7 @@ END Replace;
 
 (** Change character attributes within stretch [beg, end[ of text T. sel selects the attributes to be changed: 0, 1, 2 IN sel = fnt, col, voff selected. *)
 PROCEDURE ChangeLooks*(T: Text; beg, end: LONGINT; sel: SET; lib: Objects.Library; col, voff: SHORTINT);
-	VAR pb, pe, p: Piece; org: LONGINT; (*M: UpdateMsg; *)A: Objects.AttrMsg;
+	VAR pb, pe, p: Piece; org: LONGINT; (*M: UpdateMsg;*) A: Objects.AttrMsg;
 BEGIN
 	IF beg < end THEN
 		FindPiece(T, beg, org, p); SplitPiece(p, beg - org, pb);
@@ -524,8 +524,8 @@ BEGIN
 			IF 2 IN sel THEN p.voff := voff END;
 			p := p.next
 		UNTIL p = pe;
-		(*M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := end - beg;*)
-		(*Display.Broadcast(M); T.stamp := M.stamp*)
+		(*M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := end - beg;
+		Display.Broadcast(M); T.stamp := M.stamp*)
 	END
 END ChangeLooks;
 
@@ -702,7 +702,7 @@ VAR
 BEGIN
 	ch := S.nextCh; i := 0;
 	LOOP
-	(*	IF (S.lib = NIL) OR ~(S.lib IS Fonts.Font) THEN EXIT
+		(*IF (S.lib = NIL) OR ~(S.lib IS Fonts.Font) THEN EXIT
 		ELS*)IF ch = CR THEN INC(S.line)
 		ELSIF (ch # " ") & (ch # TAB) & (ch # LF) THEN EXIT
 		END;
@@ -734,7 +734,7 @@ BEGIN
 		ELSIF ch = "+" THEN sign := TRUE; neg := FALSE; Read(S, ch)
 		ELSE sign := FALSE; neg := FALSE
 		END;
-		IF ("0" <= ch) & (ch <= "9") (*& (S.lib IS Fonts.Font) *) THEN (*number*)
+		IF ("0" <= ch) & (ch <= "9") (*& (S.lib IS Fonts.Font)*) THEN (*number*)
 			hex := FALSE; j := 0;
 			LOOP d[i] := ch; INC(i); Read(S, ch);
 				IF (ch < "0") (*OR ~(S.lib IS Fonts.Font)*) OR (i >= maxD) THEN EXIT END;
@@ -745,14 +745,14 @@ BEGIN
 					END
 				END
 			END;
-			IF (ch = "H") (*& (S.lib IS Fonts.Font) *)THEN (*hex number*)
+			IF (ch = "H") (*& (S.lib IS Fonts.Font)*) THEN (*hex number*)
 				Read(S, ch); S.class := Int;
 				IF i-j > 8 THEN j := i-8 END;
 				k := ORD(d[j]) - 30H; INC(j);
 				IF (i-j = 7) & (k >= 8) THEN DEC(k, 16) END;
 				WHILE j < i DO k := k*10H + (ORD(d[j]) - 30H); INC(j) END;
 				IF neg THEN S.i := -k ELSE S.i := k END
-			ELSIF (ch = ".") (*& (S.lib IS Fonts.Font) *)THEN (*read real*)
+			ELSIF (ch = ".") (*& (S.lib IS Fonts.Font)*) THEN (*read real*)
 				Read(S, ch); h := i;
 				WHILE ("0" <= ch) & (ch <= "9") (*& (S.lib IS Fonts.Font)*) & (i <= maxD) DO d[i] := ch; INC(i); Read(S, ch) END;
 			(*-------- begin floating-point handling BM 1993.3.10 -----------------------------------*)
@@ -769,7 +769,7 @@ BEGIN
 					WHILE j < 32 DO k3 := k3*10 + ORD(d[j]) - ORD("0"); INC(j) END
 				END;
 				e := 0; E := ch;
-				IF ((E = "D") OR (E = "E"))(* & (S.lib IS Fonts.Font)*) THEN Read(S, ch);
+				IF ((E = "D") OR (E = "E")) (*& (S.lib IS Fonts.Font)*) THEN Read(S, ch);
 					IF (ch = "-") (*& (S.lib IS Fonts.Font)*) THEN negE := TRUE; Read(S, ch)
 					ELSE negE := FALSE;
 						IF (ch = "+") (*& (S.lib IS Fonts.Font)*) THEN Read(S, ch) END

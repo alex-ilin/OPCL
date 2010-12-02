@@ -1,6 +1,6 @@
 (* Copyright (c) 1994 - 2000 Emil J. Zeller *)
 
-MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz,  *)
+MODULE Threads; (** non-portable / source: Win32.Threads.Mod *)	(* ejz *)
 	IMPORT SYSTEM, Kernel32, Kernel, Modules, Reals;
 
 	CONST

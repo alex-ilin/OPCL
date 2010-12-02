@@ -3,7 +3,7 @@ Refer to the "General ETH Oberon System Source License" contract available at: h
 
 MODULE Types;	(** non-portable *)     (* RC 16.1.92 / MH 30.8.93 adapted to Oberon for Windows *)
 
-(**Module Types allow mappings between type names and types, and for exploring the type extensions at run time.
+(** Module Types allow mappings between type names and types, and for exploring the type extensions at run time.
 *)
 
 IMPORT Modules, Kernel, S := SYSTEM;

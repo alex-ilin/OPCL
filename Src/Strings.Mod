@@ -1,6 +1,6 @@
 (* Copyright (c) 1994 - 2000 Emil J. Zeller *)
 
-MODULE Strings; (** portable *)	(* ejz,  *)
+MODULE Strings; (** portable *)	(* ejz *)
 
 (** Strings is a utility module that provides procedures to manipulate strings.
 		Note: All strings MUST be 0X terminated. *)

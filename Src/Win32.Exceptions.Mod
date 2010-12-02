@@ -1,6 +1,6 @@
 (* Copyright (c) 1994 - 2000 Emil J. Zeller *)
 
-MODULE Exceptions; (** non-portable / source: Win32.Exceptions.Mod *)	(* ejz  *)
+MODULE Exceptions; (** non-portable / source: Win32.Exceptions.Mod *)	(* ejz *)
 	IMPORT SYSTEM, Kernel32, Kernel, Modules, Types, Strings, Threads;
 
 	CONST

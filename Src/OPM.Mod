@@ -408,14 +408,14 @@ MODULE OPM;	(** non-portable *)
 		done := FALSE;
 		F := Files.Old(fileName);
 		IF F # NIL THEN done := TRUE; Files.Set(R, F, 0);
-		    Files.Read(R, ch);
+			Files.Read(R, ch);
 			IF ch=OFtag THEN Files.Read(R, ch1); Files.ReadNum(R, symSize);
 				IF ((aos IN options) & (ch1 # OFaos)) OR (~(aos IN options) & (ch1 # OFnative)) THEN
 					err(151); done := FALSE
 				END
 			ELSE (* eb, 30.11.95 err(511); *) done := FALSE
 			END
-		END;
+		END
 	END OpenSym;
 
 	PROCEDURE Begin*(VAR modName: ARRAY OF CHAR);

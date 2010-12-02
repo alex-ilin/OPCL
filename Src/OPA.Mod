@@ -891,7 +891,8 @@ BEGIN
 	END;
 	COPY(InstrTab[ind].name, name);
 	Match(ind, op);
-	IF ind < 0 THEN RETURN END;	(* no matching opcode found *)
+	IF ind < 0 THEN RETURN END;	(* no matching opcode found *)
+
 (* Instruction prefix *)
 	UseSpecReg := IsSpecRegMode(OpTab[ind].op[0]) OR IsSpecRegMode(OpTab[ind].op[1]);
 	UseSegReg := IsSRegMode(OpTab[ind].op[0], FALSE) OR IsSRegMode(OpTab[ind].op[1], FALSE);
@@ -1175,7 +1176,8 @@ END GenCode;
 		InsertTarget("PentiumPro", {i386, i486, Pentium, PentiumPro});
 		InsertTarget("FPU", {FPU});
 		InsertTarget("Privileged", {Privileged});
-	END BodyInit;
+	END BodyInit;
+
 (* ------------------------------------------------------------------- *)
 (* Entry points and exported functions *)
 
