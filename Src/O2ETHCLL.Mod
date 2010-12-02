@@ -1,16 +1,15 @@
-(* 
-    Command line wrapper for ETH Oberon PELinker (Windows).
-    This version of 'PELinker' module was reduced to console i/o.
-    Eugene Shcherbatyuk (ugns@mail.ru)
-    Dec 2002
+(*
+	Command line wrapper for ETH Oberon PELinker (Windows).
+	This version of 'PELinker' module was reduced to console i/o.
+	Eugene Shcherbatyuk (ugns@mail.ru)
+	Dec 2002
  *)
 
 (* Copyright (c) 1994 - 2000 Emil J. Zeller *)
 
 MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
-	IMPORT SYSTEM, Kernel32, FileDir, Files, Modules,
-	                            Exceptions, Strings, Dates, Texts, BootLink,
-	                            Console, CmdLine;
+	IMPORT SYSTEM, Kernel32, FileDir, Files, Modules, Exceptions, Strings,
+		Dates, Texts, BootLink, Console, CmdLine;
 
 	CONST
 		ImageDosSignature = 05A4DH; (* MZ *)
@@ -37,7 +36,7 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 		ImageDirectoryEntryBasereloc = 5; (* Base Relocation Table *)
 
 		ImageDirectoryEntryIat = 12; (* Import Address Table *)
-		ImageSizeofShortName = 8; 
+		ImageSizeofShortName = 8;
 
 		ImageScnCntCode = 000000020H; (* Section contains code. *)
 		ImageScnCntInitializedData = 000000040H; (* Section contains initialized data. *)
@@ -48,13 +47,13 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 		ImageScnMemExecute = 020000000H; (* Section is executable. *)
 		ImageScnMemRead = 040000000H; (* Section is readable. *)
 		ImageScnMemWrite = 080000000H; (* Section is writeable. *)
-		ImageRelBasedAbsolute = 0; 
-		ImageRelBasedHigh = 1; 
-		ImageRelBasedLow = 2; 
-		ImageRelBasedHighLow = 3; 
-		ImageRelBasedHighAdj = 4; 
-		ImageRelBasedMipsJmpAddr = 5; 
-		ImageRelBasedSection = 6; 
+		ImageRelBasedAbsolute = 0;
+		ImageRelBasedHigh = 1;
+		ImageRelBasedLow = 2;
+		ImageRelBasedHighLow = 3;
+		ImageRelBasedHighAdj = 4;
+		ImageRelBasedMipsJmpAddr = 5;
+		ImageRelBasedSection = 6;
 		ImageRelBasedRel32 = 7;
 
 		RtCursor = 1; RtIcon = 3;
@@ -64,11 +63,11 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 		DefaultLanguage = 0400H;
 		VsFfiSignature = 0FEEF04BDH;
 		VsFfiStrucVersion = 000010000H;
-		VsFfiFileFlagsMask = 00000003FH; 
-		VosNtWindows32 = 000040004H; 
-		VftApp = 000000001H; 
-		VftDll = 000000002H; 
-		Vft2Unknown = 000000000H; 
+		VsFfiFileFlagsMask = 00000003FH;
+		VosNtWindows32 = 000040004H;
+		VftApp = 000000001H;
+		VftDll = 000000002H;
+		Vft2Unknown = 000000000H;
 
 		MajorLinkerVersion = CHR(0); MinorLinkerVersion = CHR(90);
 		PageSize = 01000H; SectorSize = 0200H;
@@ -156,15 +155,15 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 		END;
 
 		ImageSectionHeader = RECORD
-			Name: ARRAY ImageSizeofShortName OF CHAR; 
-			VirtualSize: LONGINT; 
-			VirtualAddress: LONGINT; 
-			SizeOfRawData: LONGINT; 
-			PointerToRawData: LONGINT; 
-			PointerToRelocations: LONGINT; 
-			PointerToLinenumbers: LONGINT; 
-			NumberOfRelocations: INTEGER; 
-			NumberOfLinenumbers: INTEGER; 
+			Name: ARRAY ImageSizeofShortName OF CHAR;
+			VirtualSize: LONGINT;
+			VirtualAddress: LONGINT;
+			SizeOfRawData: LONGINT;
+			PointerToRawData: LONGINT;
+			PointerToRelocations: LONGINT;
+			PointerToLinenumbers: LONGINT;
+			NumberOfRelocations: INTEGER;
+			NumberOfLinenumbers: INTEGER;
 			Characteristics: LONGINT;
 		END;
 
@@ -176,35 +175,35 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 				(* in IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT (new BIND) *)
 				(* O.W. date/time stamp of DLL bound to (Old BIND) *)
 			ForwarderChain: LONGINT; (* -1 if no forwarders *)
-			Name: LONGINT; 
+			Name: LONGINT;
 			FirstThunk: LONGINT (* RVA to IAT (if bound this IAT has actual addresses) *)
 		END;
 
 		ImageExportDirectory = RECORD
-			Characteristics: LONGINT; 
-			TimeDateStamp: LONGINT; 
-			MajorVersion: INTEGER; 
-			MinorVersion: INTEGER; 
-			Name: LONGINT; 
-			Base: LONGINT; 
-			NumberOfFunctions: LONGINT; 
-			NumberOfNames: LONGINT; 
-			AddressOfFunctions: LONGINT; 
-			AddressOfNames: LONGINT; 
+			Characteristics: LONGINT;
+			TimeDateStamp: LONGINT;
+			MajorVersion: INTEGER;
+			MinorVersion: INTEGER;
+			Name: LONGINT;
+			Base: LONGINT;
+			NumberOfFunctions: LONGINT;
+			NumberOfNames: LONGINT;
+			AddressOfFunctions: LONGINT;
+			AddressOfNames: LONGINT;
 			AddressOfNameOrdinals: LONGINT
 		END;
 
 		ImageBaseRelocation = RECORD
-			VirtualAddress: LONGINT; 
+			VirtualAddress: LONGINT;
 			SizeOfBlock: LONGINT
 		END;
 
 		ImageResourceDirectory = RECORD
-			Characteristics: LONGINT; 
-			TimeDateStamp: LONGINT; 
-			MajorVersion: INTEGER; 
-			MinorVersion: INTEGER; 
-			NumberOfNamedEntries: INTEGER; 
+			Characteristics: LONGINT;
+			TimeDateStamp: LONGINT;
+			MajorVersion: INTEGER;
+			MinorVersion: INTEGER;
+			NumberOfNamedEntries: INTEGER;
 			NumberOfIdEntries: INTEGER
 			(* ImageResourceDirectoryEntry DirectoryEntries[]; *)
 		END;
@@ -326,13 +325,13 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 
 	PROCEDURE Error(str1, str2: ARRAY OF CHAR);
 	BEGIN
-	    Console.WriteString(str1);
-	    Console.WriteString(str2);
+		Console.WriteString(str1);
+		Console.WriteString(str2);
 		COPY(str1, error.msg); Strings.Append(error.msg, str2);
 		Exceptions.Raise(error);
 		Texts.Append(Texts.Log, W.buf)
 	END Error;
-	
+
 	PROCEDURE Assert(cond: BOOLEAN; str1, str2: ARRAY OF CHAR);
 	BEGIN
 		IF ~cond THEN Error(str1, str2) END
@@ -446,17 +445,17 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 			imgHead: ImageFileHeader;
 			char: LONGINT; ch: CHAR;
 	BEGIN
-		F := Files.Old(stub); 
+		F := Files.Old(stub);
 		Files.Set(sR, F, 0);
 		IF F=NIL THEN
-		   Console.WriteString(stub); Console.WriteString(" not found."); Console.WriteLn();
-		   HALT(100);
+			Console.WriteString(stub); Console.WriteString(" not found."); Console.WriteLn();
+			HALT(100);
 		END;
 		(*Assert(F # NIL, stub, " Files.Old failed");*)
 		Files.ReadBytes(sR, dosHead, SIZE(ImageDosHeader));
 		IF dosHead.emagic # ImageDosSignature THEN
-		   Console.WriteString(stub); Console.WriteString(" not a valid stub file."); Console.WriteLn();
-		   HALT(100);
+			Console.WriteString(stub); Console.WriteString(" not a valid stub file."); Console.WriteLn();
+			HALT(100);
 		END;
 		(*Assert(dosHead.emagic = ImageDosSignature, stub, " not a valid stub file");*)
 		dosHead.elfanew := Align(Files.Length(F), 16);
@@ -524,9 +523,8 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 
 	PROCEDURE Clean();
 	BEGIN
-		version := NIL; imports := NIL; exports := NIL; exportOrds :=  NIL; modules := NIL;
+		version := NIL; imports := NIL; exports := NIL; exportOrds := NIL; modules := NIL;
 		icons := NIL; cursors := NIL;
-
 	END Clean;
 
 	PROCEDURE Init();
@@ -732,7 +730,6 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 			pos, i, j: LONGINT; k: INTEGER;
 			ch: CHAR;
 	BEGIN
-		
 		Texts.OpenScanner(S, T, 0); Texts.Scan(S);
 		WHILE S.class = Texts.Name DO
 			Strings.Upper(S.s, keyword);
@@ -811,8 +808,7 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 				Error("unknown keyword ", keyword)
 			END;
 		END;
-		
-END ScanLinkText;
+	END ScanLinkText;
 
 	PROCEDURE AddReloc(offs, val: LONGINT);
 	BEGIN
@@ -1697,11 +1693,11 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			imgHead.SizeOfHeaders := imgHead.SizeOfHeaders+SIZE(ImageOptionalHeader)+sections*SIZE(ImageSectionHeader);
 			imgHead.SizeOfHeaders := Align(imgHead.SizeOfHeaders, DefaultFileAlign);
 			imgHead.SizeOfImage := Align(imgHead.SizeOfHeaders, DefaultSectionAlign)+
-													Align(text.SizeOfRawData, DefaultSectionAlign)+
-													Align(idata.SizeOfRawData, DefaultSectionAlign)+
-													Align(edata.SizeOfRawData, DefaultSectionAlign)+
-													Align(reloc.SizeOfRawData, DefaultSectionAlign)+
-													Align(rsrc.SizeOfRawData, DefaultSectionAlign);
+				Align(text.SizeOfRawData, DefaultSectionAlign)+
+				Align(idata.SizeOfRawData, DefaultSectionAlign)+
+				Align(edata.SizeOfRawData, DefaultSectionAlign)+
+				Align(reloc.SizeOfRawData, DefaultSectionAlign)+
+				Align(rsrc.SizeOfRawData, DefaultSectionAlign);
 			BootLink.Close();
 			Files.Set(R, F, 0);
 			WriteImageHeader(R, sections);
@@ -1722,100 +1718,99 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 		Clean(); Texts.WriteLn(W); Texts.Append(Texts.Log, W.buf);
 		RETURN done
 	END DoLink;
-	
-(***********************************)
-PROCEDURE About();
-BEGIN
-  Console.WriteLn();
-  Console.WriteString("Command line version of the ETH Oberon Plugin for");  Console.WriteLn();
-  Console.WriteString("Windows   Release 2.4  Oberon  PELinker  utility.");  Console.WriteLn();
-  Console.WriteLn();
-  Console.WriteString("  PELinker by: Team of the Institute for Computer");  Console.WriteLn();
-  Console.WriteString("  Systems  of  ETH  Zuerich  (www.oberon.ethz.ch)");  Console.WriteLn();
-  Console.WriteString("  Wrapper  by: E.V. Shcherbatyuk   (ugns@mail.ru)");  Console.WriteLn();
-  Console.WriteLn();
-  Console.WriteString("Run 'O2ETHCLL /?' for this information.");  Console.WriteLn();
-  Console.WriteString("Run 'O2ETHCLL file' to link executable.");  Console.WriteLn();
-  Console.WriteLn();
-  Console.WriteString("file - filename of the 'link' project file");  Console.WriteLn();
-END About;
 
-(***********************************)
-PROCEDURE GetOptions(VAR name: ARRAY OF CHAR):BOOLEAN;
+	(***********************************)
+	PROCEDURE About();
+	BEGIN
+		Console.WriteLn();
+		Console.WriteString("Command line version of the ETH Oberon Plugin for");	Console.WriteLn();
+		Console.WriteString("Windows   Release 2.4  Oberon  PELinker  utility.");	Console.WriteLn();
+		Console.WriteLn();
+		Console.WriteString("  PELinker by: Team of the Institute for Computer");	Console.WriteLn();
+		Console.WriteString("  Systems  of  ETH  Zuerich  (www.oberon.ethz.ch)");	Console.WriteLn();
+		Console.WriteString("  Wrapper  by: E.V. Shcherbatyuk   (ugns@mail.ru)");	Console.WriteLn();
+		Console.WriteLn();
+		Console.WriteString("Run 'O2ETHCLL /?' for this information.");	Console.WriteLn();
+		Console.WriteString("Run 'O2ETHCLL file' to link executable.");	Console.WriteLn();
+		Console.WriteLn();
+		Console.WriteString("file - filename of the 'link' project file");	Console.WriteLn();
+	END About;
+
+	(***********************************)
+	PROCEDURE GetOptions(VAR name: ARRAY OF CHAR):BOOLEAN;
 		VAR i, j, k : LONGINT; ch: CHAR;
-BEGIN
-		name[0] := 0X; i := 0;
+	BEGIN
+		name[0] := 0X;	i := 0;
 		(* Skip executable pathname *)
 		ch := CmdLine.text[i];
-		WHILE (ch#" ") & (ch#0X) DO
-	  	INC(i);
-	  	ch := CmdLine.text[i];
+		WHILE (ch # " ") & (ch # 0X) DO
+			INC(i);
+			ch := CmdLine.text[i];
 		END;
 		j := i;
 		IF ch = 0X THEN
-			Console.WriteString("No parameters specified"); Console.WriteLn;
-			Console.WriteString("Run 'O2ETHCLL /?' for help"); Console.WriteLn;
+			Console.WriteString("No parameters specified");	Console.WriteLn;
+			Console.WriteString("Run 'O2ETHCLL /?' for help");	Console.WriteLn;
 			RETURN FALSE;
 		END;
 		(* look for switch *)
-		WHILE (ch#"/") & (ch#0X) DO
-	  	INC(i);
-		  ch := CmdLine.text[i];
+		WHILE (ch # "/") & (ch # 0X) DO
+			INC(i);
+			ch := CmdLine.text[i];
 		END;
 		IF ch = "/" THEN
-		  INC(i);
-		  ch := CmdLine.text[i];
-		  IF     ch = "?"   THEN
-		    About();
-		    RETURN FALSE;
-		  ELSIF (ch >= " ") THEN
-		    Console.WriteString("Wrong parameter specified"); Console.WriteLn;
-		    Console.WriteString("Run 'O2ETHCLL /?' for help"); Console.WriteLn;
-		    RETURN FALSE;
-		  ELSE
-		    Console.WriteString("No parameter specified"); Console.WriteLn;
-		    Console.WriteString("Run 'O2ETHCLL /?' for help"); Console.WriteLn;
-		    RETURN FALSE;
-		  END;
+			INC(i);
+			ch := CmdLine.text[i];
+			IF ch = "?" THEN
+				About();
+				RETURN FALSE;
+			ELSIF (ch >= " ") THEN
+				Console.WriteString("Wrong parameter specified");	Console.WriteLn;
+				Console.WriteString("Run 'O2ETHCLL /?' for help");	Console.WriteLn;
+				RETURN FALSE;
+			ELSE
+				Console.WriteString("No parameter specified");	Console.WriteLn;
+				Console.WriteString("Run 'O2ETHCLL /?' for help");	Console.WriteLn;
+				RETURN FALSE;
+			END;
 		ELSE
-		  i := j; (* There were no switch *)
-		  ch := CmdLine.text[i];
+			i := j; (* There were no switch *)
+			ch := CmdLine.text[i];
 		END;
-		(* look for  filename *)
-		WHILE (ch<=" ") & (ch#0X) DO
-		  INC(i); ch := CmdLine.text[i]; (* Skip blanks in front of filename *)
+		(* look for filename *)
+		WHILE (ch <= " ") & (ch # 0X) DO
+			INC(i);	ch := CmdLine.text[i]; (* Skip blanks in front of filename *)
 		END;
 		k := 0;
-		WHILE (ch >" ") & (k<LEN(name)) DO
-		  name[k] := ch; INC(k);
-		  INC(i); ch := CmdLine.text[i];
+		WHILE (ch > " ") & (k < LEN(name)) DO
+			name[k] := ch;	INC(k);
+			INC(i);	ch := CmdLine.text[i];
 		END;
 		name[k] := 0X;
 		IF k = 0 THEN
-		  Console.WriteString("No file specified"); Console.WriteLn;
-		  Console.WriteString("Run 'O2ETHCLL /?' for help"); Console.WriteLn;
-		  RETURN FALSE;
+			Console.WriteString("No file specified"); Console.WriteLn;
+			Console.WriteString("Run 'O2ETHCLL /?' for help"); Console.WriteLn;
+			RETURN FALSE;
 		END;
-		Console.WriteString("file=");Console.WriteString(name); Console.WriteLn();
+		Console.WriteString("file=");	Console.WriteString(name);	Console.WriteLn();
 		RETURN TRUE;
-END GetOptions;
+	END GetOptions;
 
-
-(** PELinker.Link .Link-file *)
-PROCEDURE Link();
-		VAR  T: Texts.Text; done: BOOLEAN;
-		     name : FileDir.FileName;
-BEGIN
-    IF GetOptions(name) THEN
-	      NEW(T); Texts.Open(T, name);
-	  IF T.len # 0 THEN
-   	 done := DoLink(T);
-      ELSE
-	    Texts.WriteString(W, name); Texts.WriteString(W, " not found");
-	    Texts.WriteLn(W); Texts.Append(Texts.Log, W.buf);
-      END;
-    END;
-END Link;
+	(** PELinker.Link .Link-file *)
+	PROCEDURE Link();
+		VAR T: Texts.Text; done: BOOLEAN;
+			name : FileDir.FileName;
+	BEGIN
+		IF GetOptions(name) THEN
+			NEW(T); Texts.Open(T, name);
+			IF T.len # 0 THEN
+				done := DoLink(T);
+			ELSE
+				Texts.WriteString(W, name); Texts.WriteString(W, " not found");
+				Texts.WriteLn(W); Texts.Append(Texts.Log, W.buf);
+			END;
+		END;
+	END Link;
 
 BEGIN
 	Link();
