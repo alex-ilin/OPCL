@@ -1721,7 +1721,7 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			name := modules;
 			WHILE name # NIL DO
 				Texts.WriteString(W, " "); Texts.WriteString(W, name.name);
-				Texts.WriteString(W, ".Obj");
+				Texts.WriteString(W, Modules.extension);
 				name := name.next
 			END;
 			name := icons;
