@@ -322,6 +322,9 @@ MODULE O2ETHCLL; (** non-portable / source: Win32.PELinker.Mod *)	(* ejz *)
 		icons: IconList;
 		cursors: CursorList;
 		relocs: ARRAY MaxRelocs OF LONGINT; nRelocs: LONGINT;
+		dependencyListOnly: BOOLEAN; (* When dependencyListOnly = TRUE, only the
+			list of files required for linking is output. Modules are listed in
+			the order of their link order, i.e. as listed in the Link-file. *)
 
 	PROCEDURE Error(str1, str2: ARRAY OF CHAR);
 	BEGIN
@@ -1732,6 +1735,7 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 		Console.WriteLn();
 		Console.WriteString("Run 'O2ETHCLL /?' for this information.");	Console.WriteLn();
 		Console.WriteString("Run 'O2ETHCLL file' to link executable.");	Console.WriteLn();
+		Console.WriteString("Run 'O2ETHCLL /d file' to output dependency list only.");	Console.WriteLn();
 		Console.WriteLn();
 		Console.WriteString("file - filename of the 'link' project file");	Console.WriteLn();
 	END About;
@@ -1769,6 +1773,8 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			IF ch = "?" THEN
 				About();
 				RETURN FALSE;
+			ELSIF ch = "d" THEN
+				dependencyListOnly := TRUE;
 			ELSIF (ch >= " ") THEN
 				Console.WriteString(WrongParamSpecified);	Console.WriteLn;
 				Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
@@ -1806,6 +1812,7 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 		VAR T: Texts.Text; done: BOOLEAN;
 			name : FileDir.FileName;
 	BEGIN
+		dependencyListOnly := FALSE;
 		IF GetOptions(name) THEN
 			NEW(T); Texts.Open(T, name);
 			IF T.len # 0 THEN
