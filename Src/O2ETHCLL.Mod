@@ -1738,6 +1738,11 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 
 	(***********************************)
 	PROCEDURE GetOptions(VAR name: ARRAY OF CHAR):BOOLEAN;
+		CONST
+			NoParamsSpecified = "No parameters specified";
+			WrongParamSpecified = "Wrong parameter specified";
+			NoFileSpecified = "No file specified";
+			SlashQuestionForHelp = "Run 'O2ETHCLL /?' for help";
 		VAR i, j, k : LONGINT; ch: CHAR;
 	BEGIN
 		name[0] := 0X;	i := 0;
@@ -1749,8 +1754,8 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 		END;
 		j := i;
 		IF ch = 0X THEN
-			Console.WriteString("No parameters specified");	Console.WriteLn;
-			Console.WriteString("Run 'O2ETHCLL /?' for help");	Console.WriteLn;
+			Console.WriteString(NoParamsSpecified);	Console.WriteLn;
+			Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 			RETURN FALSE;
 		END;
 		(* look for switch *)
@@ -1765,12 +1770,12 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 				About();
 				RETURN FALSE;
 			ELSIF (ch >= " ") THEN
-				Console.WriteString("Wrong parameter specified");	Console.WriteLn;
-				Console.WriteString("Run 'O2ETHCLL /?' for help");	Console.WriteLn;
+				Console.WriteString(WrongParamSpecified);	Console.WriteLn;
+				Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 				RETURN FALSE;
 			ELSE
-				Console.WriteString("No parameter specified");	Console.WriteLn;
-				Console.WriteString("Run 'O2ETHCLL /?' for help");	Console.WriteLn;
+				Console.WriteString(NoParamsSpecified);	Console.WriteLn;
+				Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 				RETURN FALSE;
 			END;
 		ELSE
@@ -1788,8 +1793,8 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 		END;
 		name[k] := 0X;
 		IF k = 0 THEN
-			Console.WriteString("No file specified"); Console.WriteLn;
-			Console.WriteString("Run 'O2ETHCLL /?' for help"); Console.WriteLn;
+			Console.WriteString(NoFileSpecified); Console.WriteLn;
+			Console.WriteString(SlashQuestionForHelp); Console.WriteLn;
 			RETURN FALSE;
 		END;
 		Console.WriteString("file=");	Console.WriteString(name);	Console.WriteLn();
