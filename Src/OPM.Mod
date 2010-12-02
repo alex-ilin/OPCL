@@ -1,4 +1,4 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE OPM;	(** non-portable *)
@@ -7,7 +7,7 @@ MODULE OPM;	(** non-portable *)
 (* Host interface *)
 (* RC, NM, pjm, prk *)
 
-	IMPORT Kernel, FileDir, Fonts, Texts, Files, SYSTEM;
+	IMPORT FileDir, Fonts, Texts, Oberon, Files, SYSTEM;
 
 	CONST (* i386 *)
 
@@ -87,22 +87,30 @@ MODULE OPM;	(** non-portable *)
 		NEWusingAdr* = FALSE;
 
 		(* mask for the TD associated with an object instance: mask away GC information *)
-		TDMask* = 0; (* 0FFFFFFF8H*);
+		TDMask* = 0 (*0FFFFFFF8H*);	(* set to 0 to disable masking *)
 
 		(*Configuration -- temp *)
-		OptimizeSelf* = FALSE;	(* if possible, make self pointer-based in methods *)
+		OptimizeSelf* = TRUE;	(* if possible, make self pointer-based in methods *)
+		WarnUnsafe* = FALSE;	(* generate warnings for "unsafe" language features *)
 
 		(* special character (< " ") returned by procedure Get, if end of text reached *)
 		Eot* = 0X;
 		SetLen = MAX(SET)+1;
 		NumErrors = (912+SetLen) DIV SetLen * SetLen;
 
-		(** Compiler Options *)
+		(** Code Generator Options *)
 		inxchk* = 0;	(** index check *)
 		ovflchk* = 1;	(** overflow check *)
 		typchk* = 3;	(** type checking *)
 		ptrinit* = 5;	(** pointer initialization *)
 		assert* = 6;	(** assert evaluation *)
+		fullstackinit* = 20;	(** zero all the stack (only if ptrinit)*)
+		trace* = 22;	(** trace procedure usage *)
+
+		exportDefinitions* = 30;
+		useDefinitions* = 31;
+
+		(** Parser Compiler Options *)
 		findpc* = 7;	(** find text position of breakpc *)
 		systemchk* = 8;	(** prevent compilation of modules that import SYSTEM *) (* jm *)
 		nofiles* = 9;	(** don't create any files (dVdW) *)
@@ -111,12 +119,13 @@ MODULE OPM;	(** non-portable *)
 		warning* = 12;	(** display warnings *)
 		prefix* = 18;	(** X - retain filename prefix on .Sym & .Obj file (Native) *)
 		oberon2* = 19; 	(** 2 - compile oberon-2 programs *)
-		fullstackinit* = 20;	(** zero all the stack (only if ptrinit)*)
 		oberon1* = 21;	(** compile oberon-1 programs *)
-		trace* = 22;	(** trace procedure usage *)
-		aos* = 23;	(** aos, different objfile *)
+		traceprocs* = 24;	(** trace procedure calls *)	(* temp *)
 
-		DefOpt* = {inxchk, typchk, ptrinit, fullstackinit, assert};
+		DefaultCodeOpt* = {inxchk, typchk, ptrinit, fullstackinit, assert};
+		DefaultParserOpt* = {};
+
+		NewFileFormat* = FALSE;
 
 	VAR
 		MinReal*, MaxReal*: REAL;
@@ -128,16 +137,17 @@ MODULE OPM;	(** non-portable *)
 		errors: ARRAY NumErrors DIV SetLen OF SET;
 		outputPath*: FileDir.FileName;	(* for reading and writing obj files. must include any trailing "/" or ":" *)
 		outputPrefix*: ARRAY 32 OF CHAR;	(* for writing obj files (in addition to outputPath). *)
-		options*: SET;
+		codeOptions*, parserOptions*: SET;
 		errName*: ARRAY 32 OF CHAR;
 		first: BOOLEAN;
 		extension*: ARRAY 8 OF CHAR;	(** object file extension *)
 
 	CONST
 		OFtag = 0BBX;	(* object file tag *)
-		OFnative = 0AFX;
+		OFNoZeroCompress = 0ADX;
+		OFnative* = 0AFX;
+		OFnew = 0B0X;
 		OFportable = 088X;
-		OFaos = 01X;
 
 	VAR
 		LRealPat: RECORD L, H: LONGINT END ;
@@ -149,12 +159,12 @@ MODULE OPM;	(** non-portable *)
 		oldSymF, newSymF, ObjF, RefF, ModF: Files.Rider;
 		RefFile, ObjFile, ModFile, oldSymFile, newSymFile: Files.File;
 
-	PROCEDURE Init*(opt: SET; source: Texts.Reader; log: Texts.Text);
+	PROCEDURE Init*(codeOpt, parserOpt: SET; source: Texts.Reader; log: Texts.Text);
 		VAR i: SHORTINT;
-	BEGIN inR := source; Log := log; options := opt;
+	BEGIN inR := source; Log := log; codeOptions := codeOpt; parserOptions := parserOpt;
 		noerr := TRUE; curpos := Texts.Pos(inR); errpos := curpos; lastpos := curpos-10;
 		FOR i := 0 TO NumErrors DIV SetLen - 1 DO errors[i] := {} END;
-		Kernel.GC()
+		Oberon.Collect
 	END Init;
 
 	PROCEDURE Close*;
@@ -166,9 +176,9 @@ MODULE OPM;	(** non-portable *)
 	PROCEDURE Get*(VAR ch: CHAR);	(* read next character from source text, Eot if no more *)
 	BEGIN
 		(* System3 get: skip embedded objects *)
-		(*REPEAT*)
+		REPEAT
 			Texts.Read(inR, ch); INC(curpos)
-		(*UNTIL inR.eot OR ((inR.lib # NIL) & (inR.lib IS Fonts.Font))*)
+		UNTIL inR.eot OR ((inR.lib # NIL) & (inR.lib IS Fonts.Font))
 	END Get;
 
 	PROCEDURE MakeFileName(VAR path, prefix, modName, fileName: ARRAY OF CHAR; ext: ARRAY OF CHAR);
@@ -205,22 +215,6 @@ MODULE OPM;	(** non-portable *)
 		SYSTEM.GET(SYSTEM.ADR(lr)+4, l); SYSTEM.GET(SYSTEM.ADR(lr), h);
 		FPrint(fp, l); FPrint(fp, h);
 	END FPrintLReal;
-
-	(* ----- auxiliaries ----- *)
-
-	PROCEDURE WString(VAR R: Files.Rider; VAR s: ARRAY OF CHAR);
-		VAR i: INTEGER; ch: CHAR;
-	BEGIN	i:=0; ch:=s[i];
-		IF	ch=0X	THEN	Files.Write(R, 0X); RETURN	END;
-		WHILE	(ch#0X) & (ch<7FX)	DO	INC(i); ch:=s[i]	END;
-		IF	i>1	THEN	Files.WriteBytes(R, s, i-1)	END;
-		IF	ch=0X	THEN	Files.Write(R, CHR(ORD(s[i-1])+80H))
-		ELSE
-			IF	i>0	THEN	Files.Write(R, s[i-1])	END;
-			Files.Write(R, 7FX); REPEAT	Files.Write(R, ch); INC(i); ch:=s[i]	UNTIL ch=0X;
-			Files.Write(R, 0X)
-		END
-	END WString;
 
 	(* ------------------------- Log Output ------------------------- *)
 
@@ -290,7 +284,7 @@ MODULE OPM;	(** non-portable *)
 					END
 				END
 			END
-		ELSIF warning IN options THEN
+		ELSIF warning IN parserOptions THEN
 			LogWLn; LogW(9X); LogW(9X); LogWStr("pos"); LogWNum(pos, 7); LogWStr("  warning"); LogWNum(-n, 4);
 			ErrorMsg(-n)
 		END
@@ -331,7 +325,7 @@ MODULE OPM;	(** non-portable *)
 	END SymWPos;
 
 	PROCEDURE SymWMod*(VAR name: ARRAY OF CHAR);
-	BEGIN  WString(ModF, name)
+	BEGIN  Files.WriteString(ModF, name)
 	END SymWMod;
 
 	PROCEDURE SymWSet*(s: SET);
@@ -347,7 +341,7 @@ MODULE OPM;	(** non-portable *)
 	END SymWLReal;
 
 	PROCEDURE SymWString*(VAR s: ARRAY OF CHAR);
-	BEGIN	WString(newSymF, s)
+	BEGIN	Files.WriteString(newSymF, s)
 	END SymWString;
 
 	(* ------------------------- Write Reference & Object Files ------------------------- *)
@@ -382,12 +376,12 @@ MODULE OPM;	(** non-portable *)
 	END ObjWNum;
 
 	PROCEDURE ObjWString*(VAR s: ARRAY OF CHAR);
-	BEGIN	WString(ObjF, s)
+	BEGIN	Files.WriteString(ObjF, s)
 	END ObjWString;
 
 	PROCEDURE ObjAllocInt*(): LONGINT;
 		VAR pos: LONGINT;
-	BEGIN	pos:=Files.Pos(ObjF); Files.WriteInt(ObjF, SYSTEM.VAL(INTEGER, 0));
+	BEGIN	pos:=Files.Pos(ObjF); Files.WriteInt(ObjF, 0);
 		RETURN pos;
 	END ObjAllocInt;
 
@@ -400,22 +394,32 @@ MODULE OPM;	(** non-portable *)
 
 	(* ----- files ----- *)
 
-	PROCEDURE OpenSym*(VAR R: Files.Rider; VAR name: ARRAY OF CHAR; self: BOOLEAN; VAR done: BOOLEAN);
-		VAR  fileName: FileDir.FileName; ch, ch1: CHAR; symSize: LONGINT; F: Files.File; empty: ARRAY 1 OF CHAR;
+	PROCEDURE OpenSym*(VAR R: Files.Rider; VAR name: ARRAY OF CHAR; self: BOOLEAN; VAR zeroCompress, done: BOOLEAN);
+		VAR  fileName: FileDir.FileName; ch, ch1: CHAR; symSize: LONGINT; F: Files.File; empty: ARRAY 1 OF CHAR; flags: SET;
 	BEGIN
+		zeroCompress := TRUE;
 		empty[0] := 0X;
 		MakeFileName(outputPath, empty, name, fileName, extension);
 		done := FALSE;
 		F := Files.Old(fileName);
 		IF F # NIL THEN done := TRUE; Files.Set(R, F, 0);
-		    Files.Read(R, ch);
-			IF ch=OFtag THEN Files.Read(R, ch1); Files.ReadNum(R, symSize);
-				IF ((aos IN options) & (ch1 # OFaos)) OR (~(aos IN options) & (ch1 # OFnative)) THEN
+			Files.Read(R, ch);
+			IF ch=OFtag THEN
+				Files.Read(R, ch1);
+					IF ch1 = OFNoZeroCompress THEN
+					zeroCompress := FALSE;
+					Files.Read(R, ch1);
+				END;
+				Files.ReadNum(R, symSize);
+				IF ch1 = OFnew THEN
+					Files.ReadSet(R, flags);
+					IF exportDefinitions IN flags THEN err(151); done := FALSE END
+				ELSIF ch1 # OFnative THEN
 					err(151); done := FALSE
 				END
 			ELSE (* eb, 30.11.95 err(511); *) done := FALSE
 			END
-		END;
+		END
 	END OpenSym;
 
 	PROCEDURE Begin*(VAR modName: ARRAY OF CHAR);
@@ -424,12 +428,12 @@ MODULE OPM;	(** non-portable *)
 		MakeFileName(outputPath, outputPrefix, modName, ObjFName, extension);
 		ObjFile:=Files.New(ObjFName);
 		IF ObjFile = NIL THEN  err(153);  RETURN  END;
-		Files.Set(ObjF, ObjFile, 0); Files.Write(ObjF, OFtag);
+		Files.Set(ObjF, ObjFile, 0); Files.Write(ObjF, OFtag); Files.Write(ObjF, OFNoZeroCompress);
 		ModFile:=Files.New(""); Files.Set(ModF, ModFile, 0);
 		newSymFile:=Files.New(""); Files.Set(newSymF, newSymFile, 0);
 		RefFile := Files.New(""); Files.Set(RefF, RefFile, 0);
-		IF aos IN options THEN
-			Files.Write(ObjF, OFaos)
+		IF NewFileFormat THEN
+			Files.Write(ObjF, OFnew)
 		ELSE
 			Files.Write(ObjF, OFnative);
 		END;
@@ -444,7 +448,13 @@ MODULE OPM;	(** non-portable *)
 	PROCEDURE EndSym*;
 		VAR sfsize: LONGINT;
 	BEGIN	Files.Write(ModF, 0X);
-		sfsize:=Files.Length(newSymFile)+Files.Length(ModFile); Files.WriteNum(ObjF, sfsize);
+		IF NewFileFormat THEN
+			sfsize := 4 + Files.Length(newSymFile) + Files.Length(ModFile);
+			Files.WriteNum(ObjF, sfsize);
+			Files.WriteSet(ObjF, codeOptions)
+		ELSE
+			sfsize:=Files.Length(newSymFile)+Files.Length(ModFile); Files.WriteNum(ObjF, sfsize)
+		END;
 		Commit(ModFile); Commit(newSymFile);
 		refpatch:=Files.Pos(ObjF); ObjWInt(0); ObjWInt(0)
 	END EndSym;
@@ -473,11 +483,7 @@ BEGIN
 	SYSTEM.MOVE(SYSTEM.ADR(LRealPat), SYSTEM.ADR(MinLReal), 8);	(*i386: -1.7976931348623157D308*)
 	LRealPat.L := MaxLRealPatL; LRealPat.H := MaxLRealPatH;
 	SYSTEM.MOVE(SYSTEM.ADR(LRealPat), SYSTEM.ADR(MaxLReal), 8);	(*i386: 1.7976931348623157D308*)
-	Texts.OpenWriter(W); Log := Texts.Log;
+	Texts.OpenWriter(W); Log := Oberon.Log;
 	outputPath := ""; outputPrefix := "";	(* extension is initialized in Compiler *)
 	first := TRUE
 END OPM.
-
-(*
-	30.03.01	prk	option constants moved to OPM
-*)

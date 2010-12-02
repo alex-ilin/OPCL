@@ -1,7 +1,7 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
-MODULE Dates; (** portable *)	(* PS  *)
+MODULE Dates; (** portable *)	(* PS *)
 
 CONST
 	minute* = 60; hour* = 60*minute; day* = 24*hour; week*= 7* day;

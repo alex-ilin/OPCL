@@ -1,12 +1,4 @@
-(*
-    Command line wrapper for
-    ETH Oberon compiler (Windows)
-    This 'Texts' module inputs from file and outputs to console
-    Eugene Shcherbatyuk
-    Nov 2002
- *)
-
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE Texts; (** portable *)	(*JG 23.8.94*)
@@ -14,7 +6,7 @@ MODULE Texts; (** portable *)	(*JG 23.8.94*)
 (** The Texts module implements the text abstract data type. Texts are sequences of characters and objects, with different colors, different fonts, and vertical offsets.
 *)
 
-IMPORT Files, Objects, Fonts, Reals, Strings, Console;
+IMPORT Files, Objects, Display, Fonts, Reals, Strings;
 
 CONST
 	(** Scanner symbol classes.*)
@@ -58,12 +50,12 @@ TYPE
 		org: LONGINT;	(* cache *)
 		pce: Piece
 	END;
-(*
+
 	UpdateMsg* = RECORD (Display.FrameMsg)	(** Message broadcast to indicate that part of a text changed. *)
 		text*: Text;	(** The text that changed. *)
 		beg*, end*, len*: LONGINT	(** Change location. *)
 	END;
-*)
+
 	Finder* = RECORD	(** Finder of (non-character) objects located in text. *)
 		eot*: BOOLEAN;	(** End-of-text reached during search. *)
 		pos*: LONGINT;	(** Offset of Finder in text. *)
@@ -113,10 +105,9 @@ TYPE
 	END;
 
 VAR
-    Log* : Text;
 	TextBlockId* (** First character of a text block. *), DocBlockId, NoSpex, NoSpex2, TextSpex: CHAR;
 	Wfile: Files.File; R: Files.Rider; DelBuf: Buffer; H: Objects.Handler;
-	nameChars: ARRAY 256 OF BOOLEAN; obs: Objects.Library;
+	nameChars*: ARRAY 256 OF BOOLEAN; obs: Objects.Library;
 
 (** Load text block from ASCII file f to text T. *)
 PROCEDURE LoadAscii*(T: Text; f: Files.File);
@@ -373,13 +364,12 @@ BEGIN
 	f := Files.Old(name);
 	IF f # NIL THEN
 		Files.Set(R, f, 0); Files.Read(R, ch);
-		(*IF ch = DocBlockId THEN ReadDocHeader(R, ch);  END;
-		IF (ch = TextBlockId) OR (ch = OldTextBlockId) THEN Load(T, f, Files.Pos(R), len);
-		ELSE LoadAscii(T, f);
-		END*)
-		LoadAscii(T, f);
-	ELSE GenNew(T);
-	END;
+		IF ch = DocBlockId THEN ReadDocHeader(R, ch) END;
+		IF (ch = TextBlockId) OR (ch = OldTextBlockId) THEN Load(T, f, Files.Pos(R), len)
+		ELSE LoadAscii(T, f)
+		END
+	ELSE GenNew(T)
+	END
 END Open;
 
 (** Text generator procedure. Resulting text is assigned to Objects.NewObj. *)
@@ -415,7 +405,7 @@ END SplitPiece;
 
 (** Insert buffer B in text T position pos. B is emptied. *)
 PROCEDURE Insert*(T: Text; pos: LONGINT; B: Buffer);
-	VAR pl, pr, p, qb, qe: Piece; org: LONGINT; (*M: UpdateMsg;*)
+	VAR pl, pr, p, qb, qe: Piece; org: LONGINT; M: UpdateMsg;
 BEGIN
 	FindPiece(T, pos, org, p); SplitPiece(p, pos - org, pr);
 	IF T.org >= org THEN (*adjust cache*)
@@ -430,19 +420,19 @@ BEGIN
 		qe := B.last; qb.prev := pl; pl.next := qb; qe.next := pr; pr.prev := qe
 	END;
 	T.len := T.len + B.len;
-	(*M.text := T; M.F := NIL; M.beg := pos; M.end := pos; M.len := B.len;*)
+	M.text := T; M.F := NIL; M.beg := pos; M.end := pos; M.len := B.len;
 	B.last := B.header; B.last.next := NIL; B.len := 0;
-	(*Display.Broadcast(M); T.stamp := M.stamp*)
+	Display.Broadcast(M); T.stamp := M.stamp
 END Insert;
 
 (** Append buffer to the end of text T. B is emptied. *)
 PROCEDURE Append*(T: Text; B: Buffer);
-BEGIN (* Insert(T, T.len, B)*)
+BEGIN Insert(T, T.len, B)
 END Append;
 
 (** Delete text stretch [beg, end[. *)
 PROCEDURE Delete*(T: Text; beg, end: LONGINT);
-VAR pb, pe, pbr, per: Piece; orgb, orge: LONGINT; (*M: UpdateMsg;*)
+VAR pb, pe, pbr, per: Piece; orgb, orge: LONGINT; M: UpdateMsg;
 BEGIN
 	IF beg < end THEN
 		FindPiece(T, beg, orgb, pb); SplitPiece(pb, beg - orgb, pbr);
@@ -454,14 +444,14 @@ BEGIN
 		DelBuf.last.next := NIL; DelBuf.len := end - beg;
 		per.prev := pbr.prev; pbr.prev.next := per;
 		T.len := T.len - end + beg;
-		(*M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := 0;*)
-		(*Display.Broadcast(M); T.stamp := M.stamp*)
+		M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := 0;
+		Display.Broadcast(M); T.stamp := M.stamp
 	END
 END Delete;
 
-(** Replace [beg, end[ of T with contents of buffer B. B is emptied.*)
+(** Replace [beg, end[ of T with contents of buffer B. B is emptied. *)
 PROCEDURE Replace*(T: Text; beg, end: LONGINT; B: Buffer);
-	VAR (*M: UpdateMsg*) pb, pe, pbr, per, pl, qb, qe: Piece; orgb, orge: LONGINT;
+	VAR M: UpdateMsg; pb, pe, pbr, per, pl, qb, qe: Piece; orgb, orge: LONGINT;
 BEGIN
 	IF beg < end THEN
 		FindPiece(T, beg, orgb, pb); SplitPiece(pb, beg - orgb, pbr);
@@ -481,15 +471,15 @@ BEGIN
 			qe := B.last; qb.prev := pl; pl.next := qb; qe.next := per; per.prev := qe
 		END;
 		T.len := T.len - end + beg + B.len;
-		(*M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := B.len;*)
+		M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := B.len;
 		B.last := B.header; B.last.next := NIL; B.len := 0;
-		(*Display.Broadcast(M); T.stamp := M.stamp*)
+		Display.Broadcast(M); T.stamp := M.stamp
 	END
 END Replace;
 
 (** Change character attributes within stretch [beg, end[ of text T. sel selects the attributes to be changed: 0, 1, 2 IN sel = fnt, col, voff selected. *)
 PROCEDURE ChangeLooks*(T: Text; beg, end: LONGINT; sel: SET; lib: Objects.Library; col, voff: SHORTINT);
-	VAR pb, pe, p: Piece; org: LONGINT; (*M: UpdateMsg; *)A: Objects.AttrMsg;
+	VAR pb, pe, p: Piece; org: LONGINT; M: UpdateMsg; A: Objects.AttrMsg;
 BEGIN
 	IF beg < end THEN
 		FindPiece(T, beg, org, p); SplitPiece(p, beg - org, pb);
@@ -524,8 +514,8 @@ BEGIN
 			IF 2 IN sel THEN p.voff := voff END;
 			p := p.next
 		UNTIL p = pe;
-		(*M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := end - beg;*)
-		(*Display.Broadcast(M); T.stamp := M.stamp*)
+		M.text := T; M.F := NIL; M.beg := beg; M.end := end; M.len := end - beg;
+		Display.Broadcast(M); T.stamp := M.stamp
 	END
 END ChangeLooks;
 
@@ -669,7 +659,7 @@ BEGIN
 			Read(R, ch); RETURN
 		END
 	END;
-	ch := R.buf[R.bufpos]; INC(R.bufpos); INC(R.off);
+	ch := R.buf[R.bufpos]; INC(R.bufpos); INC(R.off)
 END Read;
 
 (** Return reader's position within the text. *)
@@ -702,20 +692,20 @@ VAR
 BEGIN
 	ch := S.nextCh; i := 0;
 	LOOP
-	(*	IF (S.lib = NIL) OR ~(S.lib IS Fonts.Font) THEN EXIT
-		ELS*)IF ch = CR THEN INC(S.line)
+		IF (S.lib = NIL) OR ~(S.lib IS Fonts.Font) THEN EXIT
+		ELSIF ch = CR THEN INC(S.line)
 		ELSIF (ch # " ") & (ch # TAB) & (ch # LF) THEN EXIT
 		END;
 		Read(S, ch)
 	END;
-	(*IF S.lib = NIL THEN
+	IF S.lib = NIL THEN
 		S.class := Inval; S.eot := TRUE; Read(S, ch)
 	ELSIF ~(S.lib IS Fonts.Font) THEN
 		S.class := Object; S.lib.GetObj(S.lib, ORD(ch), S.obj); Read(S, ch)
-	ELS*)IF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch = ".") OR (ch = "/") (* OR (ch = ":") *) THEN (*name*)
+	ELSIF ("A" <= CAP(ch)) & (CAP(ch) <= "Z") OR (ch = ".") OR (ch = "/") (* OR (ch = ":") *) THEN (*name*)
 		REPEAT
 			S.s[i] := ch; INC(i); Read(S, ch)
-		UNTIL ~(nameChars[ORD(ch)]) (*OR ~(S.lib IS Fonts.Font)*) OR (i = LEN(S.s)-1);
+		UNTIL ~(nameChars[ORD(ch)]) OR ~(S.lib IS Fonts.Font) OR (i = LEN(S.s)-1);
 		S.s[i] := 0X;
 		IF (i = 1) & ((CAP(S.s[0]) < "A") OR (CAP(S.s[0]) > "Z")) THEN
 			S.c := S.s[0]; S.class := Char
@@ -724,20 +714,20 @@ BEGIN
 		END
 	ELSIF ch = 22X THEN (*literal string*)
 		Read(S, ch);
-		WHILE (ch # 22X) & (ch >= " ") (*& (S.lib IS Fonts.Font)*) & (i # LEN(S.s)-1) DO
+		WHILE (ch # 22X) & (ch >= " ") & (S.lib IS Fonts.Font) & (i # LEN(S.s)-1) DO
 			S.s[i] := ch; INC(i); Read(S, ch)
 		END;
-		WHILE (ch # 22X) & (ch >= " ") (*& (S.lib IS Fonts.Font)*) DO Read(S, ch) END;
+		WHILE (ch # 22X) & (ch >= " ") & (S.lib IS Fonts.Font) DO Read(S, ch) END;
 		S.s[i] := 0X; S.len := SHORT(SHORT(i)); Read(S, ch); S.class := String
 	ELSE
 		IF ch = "-" THEN sign := TRUE; neg := TRUE; Read(S, ch)
 		ELSIF ch = "+" THEN sign := TRUE; neg := FALSE; Read(S, ch)
 		ELSE sign := FALSE; neg := FALSE
 		END;
-		IF ("0" <= ch) & (ch <= "9") (*& (S.lib IS Fonts.Font) *) THEN (*number*)
+		IF ("0" <= ch) & (ch <= "9") & (S.lib IS Fonts.Font) THEN (*number*)
 			hex := FALSE; j := 0;
 			LOOP d[i] := ch; INC(i); Read(S, ch);
-				IF (ch < "0") (*OR ~(S.lib IS Fonts.Font)*) OR (i >= maxD) THEN EXIT END;
+				IF (ch < "0") OR ~(S.lib IS Fonts.Font) OR (i >= maxD) THEN EXIT END;
 				IF "9" < ch THEN
 					IF ("A" <= ch) & (ch <= "F") THEN hex := TRUE; ch := CHR(ORD(ch)-7)
 					ELSIF ("a" <= ch) & (ch <= "f") THEN hex := TRUE; ch := CHR(ORD(ch)-27H)
@@ -745,16 +735,16 @@ BEGIN
 					END
 				END
 			END;
-			IF (ch = "H") (*& (S.lib IS Fonts.Font) *)THEN (*hex number*)
+			IF (ch = "H") & (S.lib IS Fonts.Font) THEN (*hex number*)
 				Read(S, ch); S.class := Int;
 				IF i-j > 8 THEN j := i-8 END;
 				k := ORD(d[j]) - 30H; INC(j);
 				IF (i-j = 7) & (k >= 8) THEN DEC(k, 16) END;
 				WHILE j < i DO k := k*10H + (ORD(d[j]) - 30H); INC(j) END;
 				IF neg THEN S.i := -k ELSE S.i := k END
-			ELSIF (ch = ".") (*& (S.lib IS Fonts.Font) *)THEN (*read real*)
+			ELSIF (ch = ".") & (S.lib IS Fonts.Font) THEN (*read real*)
 				Read(S, ch); h := i;
-				WHILE ("0" <= ch) & (ch <= "9") (*& (S.lib IS Fonts.Font)*) & (i <= maxD) DO d[i] := ch; INC(i); Read(S, ch) END;
+				WHILE ("0" <= ch) & (ch <= "9") & (S.lib IS Fonts.Font) & (i < maxD) DO d[i] := ch; INC(i); Read(S, ch) END;
 			(*-------- begin floating-point handling BM 1993.3.10 -----------------------------------*)
 				WHILE i MOD 8 # 0 DO d[i] := "0"; INC(i) END;
 				j := 0; k := 0; k1 := 0; k2 := 0; k3 := 0; (* store digits 0..7, 8..15, 16..23, 24..31 in k, k1, k2, k3 *)
@@ -769,12 +759,12 @@ BEGIN
 					WHILE j < 32 DO k3 := k3*10 + ORD(d[j]) - ORD("0"); INC(j) END
 				END;
 				e := 0; E := ch;
-				IF ((E = "D") OR (E = "E"))(* & (S.lib IS Fonts.Font)*) THEN Read(S, ch);
-					IF (ch = "-") (*& (S.lib IS Fonts.Font)*) THEN negE := TRUE; Read(S, ch)
+				IF ((E = "D") OR (E = "E")) & (S.lib IS Fonts.Font) THEN Read(S, ch);
+					IF (ch = "-") & (S.lib IS Fonts.Font) THEN negE := TRUE; Read(S, ch)
 					ELSE negE := FALSE;
-						IF (ch = "+") (*& (S.lib IS Fonts.Font)*) THEN Read(S, ch) END
+						IF (ch = "+") & (S.lib IS Fonts.Font) THEN Read(S, ch) END
 					END;
-					WHILE ("0" <= ch) & (ch <= "9") (*& (S.lib IS Fonts.Font)*) DO e := e*10 + ORD(ch) - ORD("0"); Read(S, ch) END;
+					WHILE ("0" <= ch) & (ch <= "9") & (S.lib IS Fonts.Font) DO e := e*10 + ORD(ch) - ORD("0"); Read(S, ch) END;
 					IF negE THEN e := - e END
 				END;
 				y := k3*Reals.Ten(-32) + k2*Reals.Ten(-24); y := y + k1*Reals.Ten(-16);
@@ -835,7 +825,7 @@ PROCEDURE SetColor*(VAR W: Writer; col: SHORTINT);
 BEGIN W.col := col
 END SetColor;
 
-(** Set writer W to verticall offset voff. Vertical offset controls the writing of super- and sub-scripts. *)
+(** Set writer W to vertical offset voff. Vertical offset controls the writing of super- and sub-scripts. *)
 PROCEDURE SetOffset*(VAR W: Writer; voff: SHORTINT);
 BEGIN W.voff := voff
 END SetOffset;
@@ -843,7 +833,7 @@ END SetOffset;
 (** Write character ch to writer W's buffer. *)
 PROCEDURE Write*(VAR W: Writer; ch: CHAR);
 	VAR p, q: Piece;
-BEGIN (*p := W.buf.last;
+BEGIN p := W.buf.last;
 	IF ~(W.lib IS Fonts.Font) OR (W.lib # p.lib) OR (W.col # p.col) OR (W.voff # p.voff) OR (Files.Base(W.R) # p.f) THEN
 		NEW(q); q.ref := MIN(INTEGER);
 		IF ~(W.lib IS Fonts.Font) THEN W.lib.GetObj(W.lib, ORD(ch), q.obj) END;
@@ -853,13 +843,12 @@ BEGIN (*p := W.buf.last;
 		W.buf.last := p
 	END;
 	Files.Write(W.R, ch);
-	INC(p.len); INC(W.buf.len);*)
-	Console.Write(ch);
+	INC(p.len); INC(W.buf.len)
 END Write;
 
 (** Write an end-of-line character to W's buffer. *)
 PROCEDURE WriteLn*(VAR W: Writer);
-BEGIN (*Write(W, CR)*) Console.WriteLn();
+BEGIN Write(W, CR)
 END WriteLn;
 
 (** Write string s to W's buffer. *)
@@ -1202,7 +1191,8 @@ Fonts.Font also settles the question. Non-character objects of a text are typica
 
 4. The scanner classes indicate what token was scanned. The scanner understands the following token types:
 
-	Name	Longest sequence consisting of A..Z, a..z, ".", directory separator, and "@".
+	Name	Longest sequence starting with "A".."Z", "a".."z", ".", "/", and containing
+		"A".."Z", "a".."z", "0".."9", "@", ".", "/", ":", "_", 80X..96X
 	String	Any character sequence surrounded by double quotes, i.e. "string".
 		The quotes are not returned in the s field of the scanner descriptor.
 	Int	Any valid integer number.

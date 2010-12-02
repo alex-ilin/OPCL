@@ -1,6 +1,7 @@
-(* Copyright (c) 1994 - 2000 Emil J. Zeller *)
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
-MODULE Strings; (** portable *)	(* ejz,  *)
+MODULE Strings; (** portable *)	(* ejz *)
 
 (** Strings is a utility module that provides procedures to manipulate strings.
 		Note: All strings MUST be 0X terminated. *)
@@ -636,6 +637,7 @@ END StrToReal;
 		i := 0; ch := str[i];
 		WHILE (ch # 0X) & (ch # "}") DO
 			WHILE (ch # 0X) & ((ch < "0") OR (ch > "9")) DO INC(i); ch := str[i] END;
+			IF ch = 0X THEN RETURN END;
 			d := 0; WHILE (ch >= "0") & (ch <= "9") DO d := d*10 + ORD(ch) - 30H; INC(i); ch := str[i] END;
 			IF d <= MAX(SET) THEN INCL(set, d) END;
 			IF dot THEN
@@ -864,7 +866,7 @@ END StrToReal;
 		FOR i := 0 TO 255 DO
 			ISOToOberon[i] := CHR(i); OberonToISO[i] := CHR(i)
 		END;
-		ISOToOberon[8] := CHR(127);
+		(* ISOToOberon[8] := CHR(127); *)
 		ISOToOberon[146] := CHR(39);
 		ISOToOberon[160] := CHR(32);
 		ISOToOberon[162] := CHR(99);

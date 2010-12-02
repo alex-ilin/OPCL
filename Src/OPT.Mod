@@ -1,4 +1,4 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 (* OPT - Oberon Portable Symbol Table (front end) *)
@@ -15,6 +15,8 @@ MODULE OPT;	(* non-portable *)
 
 		HdPtrName* = "@ptr";
 		ObjBody = "@Body";
+		Delegate* = "@delegate";
+		HdPtrStruct* = "@pointer";
 
 	(* object modes *)
 		Var = 1; VarPar = 2; Con = 3; Fld = 4; Typ = 5; LProc = 6; XProc = 7;
@@ -25,7 +27,7 @@ MODULE OPT;	(* non-portable *)
 		Undef = 0; Byte = 1; Bool = 2; Char = 3; SInt = 4; Int = 5; LInt = 6;
 		Real = 7; LReal = 8; Set = 9; String = 10; NilTyp = 11; NoTyp = 12;
 		Pointer = 13; ProcTyp = 14; Comp = 15;
-		HInt = 16;
+		HInt = 16; Char16 = 17; Char32 = 18;
 
 		(* composite structure forms *)
 		Basic = 1; StaticArr = 2; SDynArr = 3; DynArr = 4; OpenArr = 5; Record = 6;
@@ -63,11 +65,22 @@ MODULE OPT;	(* non-portable *)
 		used* = 1; param* = 3;
 
 	(*symbol tags*)
+		SFtypBool=01H; SFtypChar=02H;
+		SFtypChar16=03H; SFtypChar32=04H;
+		SFtypSInt=05H; SFtypInt=06H; SFtypLInt=07H; SFtypHInt=08H;
+		SFtypReal=09H; SFtypLReal=0AH; SFtypSet=0BH; SFtypString=0CH; SFtypNoTyp=0DH; SFtypNilTyp=0EH;
+		SFtypByte=0FH; SFtypptr=10H;
+
+		SFlastStruct = SFtypptr;
+
+		SFmod1=11H; SFmod31=2CH; SFmodOther=2DH;
+(*
 		SFtypBool=01H; SFtypChar=02H; SFtypSInt=03H; SFtypInt=04H; SFtypLInt=05H; SFtypHInt=06H;
 		SFtypReal=07H; SFtypLReal=08H; SFtypSet=09H; SFtypString=0AH; SFtypNoTyp=0BH; SFtypNilTyp=0CH;
 		SFtypByte=0DH; SFtypptr=0EH;
 		SFlastStruct = 0EH;
 		SFmod1=0FH; SFmod31=2CH; SFmodOther=2DH;
+*)
 		SFtypOpenArr=2EH; SFtypDynArr=2FH; SFtypArray=30H; SFtypPointer=31H; SFtypRecord=32H; SFtypProcTyp=33H;
 		SFsysflag=34H; SFinvisible=35H; SFreadonly=36H;
 		SFobjflag = 37H;	(*duplicate, used only for fields, not element of first(Structure) *)
@@ -88,6 +101,8 @@ MODULE OPT;	(* non-portable *)
 		Node* = POINTER TO NodeDesc;
 		ConstExt* = POINTER TO OPS.String;
 
+		ReadStringProc = PROCEDURE (VAR R: Files.Rider; VAR string: ARRAY OF CHAR);
+
 		ConstDesc* = RECORD
 			ext*: ConstExt;	(* string or code for code proc *)
 			intval*: LONGINT;	(* constant value or adr, proc par size, text position or least case label *)
@@ -104,7 +119,7 @@ MODULE OPT;	(* non-portable *)
 			code*: Node;
 			name*: OPS.Name;
 			leaf*: BOOLEAN;
-			mode*, mnolev*: SHORTINT;	(* mnolev < 0 -> mno = -mnolev *)
+			mode*, mnolev*: LONGINT;	(* mnolev < 0 -> mno = -mnolev *)
 			vis*: SHORTINT;	(* 0: internal; 1: external; 2: externalR *)
 			typ*: Struct;
 			conval*: Const;
@@ -134,7 +149,9 @@ MODULE OPT;	(* non-portable *)
 		END;
 
 		StrDesc* = RECORD
-			form*, comp*, mno*, extlev*: SHORTINT;
+			form*, comp*: SHORTINT;
+			mno*: LONGINT;
+			extlev*: SHORTINT;
 			ref*: INTEGER;  align*, sysflag*: SHORTINT;
 			rectest*, n*, size*, tdadr*, offset*, txtpos*, txtpos2*: LONGINT;
 			BaseTyp*: Struct;
@@ -158,10 +175,11 @@ MODULE OPT;	(* non-portable *)
 		topScope*, objects*: Object;
 		undftyp*, bytetyp*, booltyp*, chartyp*, sinttyp*, inttyp*, linttyp*, hinttyp*,
 		realtyp*, lrltyp*, settyp*, stringtyp*, niltyp*, notyp*, ptrtyp*: Struct;
+		char16typ, char32typ: Struct;
 
 		SYSimported*: BOOLEAN;
-		nofmod*: SHORTINT; modules*: ModArr;	(*global for each module being compiled*)
-		nofemod: SHORTINT; emodules: ModArr; modNo*: INTEGER;	(*global for each module being compiled*)
+		nofmod*: LONGINT; modules*: ModArr;	(*global for each module being compiled*)
+		nofemod: LONGINT; emodules: ModArr; modNo*: INTEGER;	(*global for each module being compiled*)
 		universe, syslink: Object;
 
 		strucForm: ARRAY SFtypProcTyp+1 OF SHORTINT;	(*forms of structures*)
@@ -517,7 +535,7 @@ MODULE OPT;	(* non-portable *)
 	END QualResolve;
 
 	PROCEDURE Resolve*(VAR name: ARRAY OF CHAR; VAR x, y: Node): Object;
-		VAR op, res, scope: Object; i, d, distance: SHORTINT; wrn, warning: BOOLEAN;
+		VAR op, res, scope: Object; i: LONGINT; d, distance: SHORTINT; wrn, warning: BOOLEAN;
 	BEGIN res:=NIL; i:=0; distance:=MAX(SHORTINT); scope:=topScope; wrn:=FALSE; warning:=FALSE;
 		WHILE scope#NIL DO
 			FindInScope(name, scope, op);
@@ -568,7 +586,7 @@ MODULE OPT;	(* non-portable *)
 	PROCEDURE Init*(VAR name: OPS.Name);
 	BEGIN topScope := universe; OpenScope(0, NIL); nofmod := 1; SYSimported := FALSE; impSelf:=FALSE;
 		sfpresent:=TRUE;
-		newSF := (OPM.newsf IN OPM.options); extSF := newSF OR (OPM.extsf IN OPM.options);
+		newSF := (OPM.newsf IN OPM.parserOptions); extSF := newSF OR (OPM.extsf IN OPM.parserOptions);
 		modules[0]:=NewMod();
 		SYSTEM.MOVE(SYSTEM.VAL(LONGINT, topScope), SYSTEM.VAL(LONGINT, modules[0]), SIZE(ObjDesc));
 		modules[0].name:=name;
@@ -834,16 +852,16 @@ MODULE OPT;	(* non-portable *)
 
 	PROCEDURE Imp(VAR impName, modName: OPS.Name; VAR M: Module);
 		VAR R: Files.Rider; i: INTEGER; tag: LONGINT; done: BOOLEAN; mode: SHORTINT; obj, last: Object; tdum: Struct;
-			new, operator: BOOLEAN;
+			new, operator, zeroCompress: BOOLEAN; readString: ReadStringProc;
 
 		PROCEDURE^InStruct(VAR typ: Struct; par: BOOLEAN);
 
 		PROCEDURE GetImports;
 			VAR name: OPS.Name; TM: Module;
-		BEGIN	ReadString(R, name);
+		BEGIN	readString(R, name);
 			WHILE	name#""	DO	Imp(name, modName, TM);
 				M.import[M.nofimp]:=TM; INC(M.nofimp); IF M.nofimp>=LEN(M.import^) THEN DoubleModArr(M.import) END;
-				M.nofreimp:=0; ReadString(R, name)
+				M.nofreimp:=0; readString(R, name)
 			END
 		END GetImports;
 
@@ -855,7 +873,7 @@ MODULE OPT;	(* non-portable *)
 				last:=par;
 				IF	tag=SFvar	THEN	par.mode:=VarPar; Files.ReadNum(R, tag)	ELSE par.mode:=Var END;
 				(*IF	tag=SFleaf	THEN	par.leaf:=TRUE; Files.ReadNum(R, tag)	END;*)
-				InStruct(par.typ, TRUE); ReadString(R, par.name); Files.ReadNum(R, tag)
+				InStruct(par.typ, TRUE); readString(R, par.name); Files.ReadNum(R, tag)
 			END
 		END InParList;
 
@@ -887,7 +905,7 @@ MODULE OPT;	(* non-portable *)
 				last:=fld;
 				IF tag=SFobjflag THEN Files.Read(R, fld.sysflag); Files.ReadNum(R, tag) END;
 				IF tag=SFreadonly THEN Files.ReadNum(R, tag); fld.vis:=externalR ELSE fld.vis:=external END;
-				fld.mode:=Fld; InStruct(fld.typ, FALSE); ReadString(R, fld.name);
+				fld.mode:=Fld; InStruct(fld.typ, FALSE); readString(R, fld.name);
 				IF	fld.name=""	THEN	fld.vis:=internal	END;
 				InsertImport(fld, scope); Files.ReadNum(R, tag);
 			END;
@@ -895,8 +913,8 @@ MODULE OPT;	(* non-portable *)
 				WHILE	tag#SFend	DO	NEW(fld); fld.mode:=TProc; fld.vis:=external;
 					fld.conval:=NewConst(); fld.linkadr := OPM.LANotAlloc;	(* mfix *)
 					fld.conval.setval:={hasBody};	(* mfix *)
-					InStruct(fld.typ, FALSE); ReadString(R, fld.name);
-					IF fld.name = "" THEN fld.vis:=internal; ReadString(R, fld.name) END;
+					InStruct(fld.typ, FALSE); readString(R, fld.name);
+					IF fld.name = "" THEN fld.vis:=internal; readString(R, fld.name) END;
 					InParList(fld.link);
 					IF fld.name = ObjBody THEN
 						typ.strobj.link := fld.link; fld := typ.strobj; INCL (conval.setval, hasBody)
@@ -922,7 +940,7 @@ MODULE OPT;	(* non-portable *)
 			ELSIF tag <= SFlastStruct THEN typ:=predefStruct[tag]
 			ELSIF tag <= SFmodOther THEN
 				IF tag = SFmodOther THEN Files.ReadNum(R, tag) ELSE tag:=tag-SFmod1 END;
-				mod:=M.import[tag]; ReadString(R, typname);
+				mod:=M.import[tag]; readString(R, typname);
 				IF typname[0]#0X THEN
 					i:=1; WHILE (i<mod.nofstr) & (mod.struct[i].strobj.name#typname) DO INC(i) END;
 					IF i<mod.nofstr THEN typ:=mod.struct[i]  ELSE  typ:=niltyp; IF ~impSelf THEN err(150) END END;
@@ -948,7 +966,7 @@ MODULE OPT;	(* non-portable *)
 				ELSIF (typ.form=Pointer) & (btyp.comp=Record) & (btyp.strobj.name="") THEN
 					btyp.ptr := typ
 				END;
-				NEW(tobj); tobj.mode:=Typ; tobj.nxtobj:=last; last:=tobj; tobj.typ:=typ; ReadString(R, tobj.name);
+				NEW(tobj); tobj.mode:=Typ; tobj.nxtobj:=last; last:=tobj; tobj.typ:=typ; readString(R, tobj.name);
 				typ.strobj := tobj;
 				IF	tobj.name#""	THEN	tobj.vis:=vis; tobj.typ:=typ; InsertImport(tobj, M)	END;
 				CASE	typtag	OF
@@ -971,7 +989,7 @@ MODULE OPT;	(* non-portable *)
 			IF (tag = SFobjflag) THEN  Files.Read(R, obj.sysflag); Files.ReadNum(R, tag)  END;
 			IF tag=SFreadonly THEN Files.ReadNum(R, tag); obj.vis:=externalR ELSE obj.vis:=external END;
 			(*IF tag=SFleaf THEN Files.ReadNum(R, tag); obj.leaf:=TRUE END;*)
-			InStruct(obj.typ, FALSE); ReadString(R, obj.name);
+			InStruct(obj.typ, FALSE); readString(R, obj.name);
 			IF operator THEN  obj.prio := 126  END;
 			InsertImport(obj, M)
 		END InObj;
@@ -1001,7 +1019,7 @@ MODULE OPT;	(* non-portable *)
 			| SFtypSet:	Files.ReadNum(R, SYSTEM.VAL(LONGINT, conval.setval))
 			| SFtypReal:	Files.ReadReal(R, r); conval.realval := r; conval.intval := OPM.ConstNotAlloc
 			| SFtypLReal:	Files.ReadLReal(R, conval.realval); conval.intval := OPM.ConstNotAlloc
-			| SFtypString:	NEW(conval.ext); ReadString(R, conval.ext^);
+			| SFtypString:	NEW(conval.ext); readString(R, conval.ext^);
 				s:=0; WHILE conval.ext[s]#0X DO INC(s) END; conval.intval:=OPM.ConstNotAlloc; conval.intval2:=s+1
 			| SFtypNilTyp:
 			END
@@ -1018,7 +1036,10 @@ MODULE OPT;	(* non-portable *)
 		M.nofreimp:=0;
 		IF	new	OR	impSelf&(i=0)	THEN
 			M.nofimp:=0; M.struct[0]:=NIL; M.nofstr:=1; operator:=FALSE;
-			OPM.OpenSym(R, impName, impSelf, done);
+			OPM.OpenSym(R, impName, impSelf, zeroCompress, done);
+			IF zeroCompress THEN readString := ReadString;
+			ELSE readString := Files.ReadString
+			END;
 			IF	done	THEN	GetImports;
 				IF	OPM.noerr	THEN
 					i:=0; WHILE i<nofmod DO modules[i].nofreimp:=0; INC(i) END;
@@ -1049,7 +1070,7 @@ MODULE OPT;	(* non-portable *)
 					END;
 					IF	tag=SFalias	THEN	Files.ReadNum(R, tag);
 						WHILE	tag < SFtyp	DO	NEW(obj); obj.vis:=external; obj.mode:=Typ;
-							InStruct(obj.typ, FALSE); ReadString(R, obj.name);
+							InStruct(obj.typ, FALSE); readString(R, obj.name);
 							IF obj.typ.strobj.vis = internal THEN  INCL(obj.typ.strobj.flag, typeVisible)  END;
 							InsertImport(obj, M); CompOldSym(obj);
 							Files.ReadNum(R, tag)
@@ -1070,6 +1091,7 @@ MODULE OPT;	(* non-portable *)
 				ELSE err(152);
 				END;
 			END
+		ELSIF (i = 0) & ~impSelf THEN err(154)
 		END;
 	END Imp;
 
@@ -1205,7 +1227,7 @@ MODULE OPT;	(* non-portable *)
 		IF	typ=NIL	THEN	OPM.SymW(0X)
 		ELSIF	typ.mno#0	THEN	mod:=modules[typ.mno]; OutMod(mod);
 			IF mod.nofstr>0 THEN mod.nofstr:=0 END;
-			IF mod.mode>31 THEN OPM.SymW(CHR(SFmodOther)); OPM.SymWNum(mod.mode-1) ELSE OPM.SymW(CHR(SFmod1-1+mod.mode)) END;
+			IF mod.mode> (SFmodOther-SFmod1) THEN OPM.SymW(CHR(SFmodOther)); OPM.SymWNum(mod.mode-1) ELSE OPM.SymW(CHR(SFmod1-1+mod.mode)) END;
 			IF typ.sref<0 THEN DEC(mod.nofstr); typ.sref:=-mod.nofstr; OPM.SymWString(typ.strobj.name);
 			ELSE OPM.SymW(0X); OPM.SymWNum(typ.sref-1) END; 	(*!!!sref > 0*)
 		ELSIF	typ.sref>0	THEN	OPM.SymWNum(typ.sref)	(*!!!sref < 0*)
@@ -1253,10 +1275,16 @@ MODULE OPT;	(* non-portable *)
 	END OutObj;
 
 	PROCEDURE OutScope*(scope: Object; public: BOOLEAN);
-		VAR obj: Object; first: BOOLEAN;
+		VAR obj: Object; first: BOOLEAN; i: LONGINT;
 	BEGIN	export:=public;
 		exp[Con]:=NIL; exp[Var]:=NIL; exp[LProc]:=NIL; exp[XProc]:=NIL; exp[Alias]:=NIL; exp[Typ]:=NIL; exp[Operator]:=NIL;
 		Enumerate(scope);
+
+		i := 1;
+		WHILE (i < LEN(modules)) & (modules[i] # NIL) DO
+			IF modules[i].directImp THEN OutMod(modules[i])  END;	(*export those explicitly imported to allow for recursion test*)
+			INC(i)
+		END;
 
 		IF	exp[Con]#NIL	THEN	OPM.SymW(CHR(SFconst)); obj:=exp[Con];
 			WHILE	obj#NIL	DO	OutObj(obj); OutConst(obj.typ.form, obj.conval); obj:=obj.sibling	END;
@@ -1312,7 +1340,7 @@ MODULE OPT;	(* non-portable *)
 	END OutScope;
 
 	PROCEDURE Export*(VAR modName: OPS.Name; VAR newsf, extsf: BOOLEAN);
-		VAR mods: SHORTINT; aliasName: OPS.Name;
+		VAR mods: LONGINT; aliasName: OPS.Name;
 	BEGIN symExtended:=FALSE; symNew:=FALSE; nofstruc:=0; nofemod:=0; objects:=NIL;
 		modNo:=0; COPY("@self", aliasName); mods:=nofmod;
 		Import(aliasName, modName, modName); nofmod:=mods;
@@ -1401,7 +1429,14 @@ BEGIN
 	EnterTyp("LONGREAL", LReal, OPM.LRealSize, lrltyp, SFtypLReal);
 	EnterTyp("SHORTINT", SInt, OPM.SIntSize, sinttyp, SFtypSInt);
 	EnterTyp("BOOLEAN", Bool, OPM.BoolSize, booltyp, SFtypBool);
+(*
+	EnterTyp("CHAR16", Char16, OPM.IntSize, char16typ, SFtypChar16);
+	EnterTyp("CHAR32", Char32, OPM.LIntSize, char32typ, SFtypChar32);
+*)
+	predefStruct[SFtypChar16] := notyp;
+	predefStruct[SFtypChar32] := notyp;
 	EnterTypAlias("PTR",  ptrtyp);
+	EnterTypAlias("ANY",  ptrtyp);
 
 	universe := topScope^.right; topScope^.right := syslink;		(*add to SYSTEM*)
 	EnterIntConst("EAX", 8); EnterIntConst("ECX", 9);
@@ -1448,7 +1483,3 @@ BEGIN
 
 	NEW(ToBeFixed); ToBeFixed.incomplete := TRUE;
 END OPT.
-
-(*
-	30.03.01	prk	option constants moved to OPM
-*)

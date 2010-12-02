@@ -1,8 +1,8 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE Fonts; (** portable / source: Win32.Fonts.Mod *)	(* ejz *)
-	IMPORT SYSTEM, Modules, Objects;
+	IMPORT SYSTEM, Modules, Objects, Display;
 
 	CONST
 		substitute* = -1; font* = 0; metric* = 1;	(** Font types. *)
@@ -13,7 +13,7 @@ MODULE Fonts; (** portable / source: Win32.Fonts.Mod *)	(* ejz *)
 
 		CharDesc* = RECORD (Objects.ObjDesc)	(** The objects in a font library. *)
 			dx*, x*, y*, w*, h*: INTEGER;	(** Character width, pattern offset (x, y), pattern size (w, h). *)
-			pat*: LONGINT	(** Character raster data. *)
+			pat*: Display.Pattern	(** Character raster data. *)
 		END;
 
 		FontDesc* = RECORD (Objects.LibDesc)
@@ -26,7 +26,7 @@ MODULE Fonts; (** portable / source: Win32.Fonts.Mod *)	(* ejz *)
 		Default*: Font;	(** Default system screen font (typically Syntax10.Scn.Fnt). *)
 
 	(** Return the character and data of ch in a font. *)
-	PROCEDURE GetChar*(F: Font; ch: CHAR; VAR dx, x, y, w, h: INTEGER; VAR pat: LONGINT);
+	PROCEDURE GetChar*(F: Font; ch: CHAR; VAR dx, x, y, w, h: INTEGER; VAR pat: Display.Pattern);
 		VAR obj: Objects.Object;
 	BEGIN
 		F.GetObj(F, ORD(ch), obj);
@@ -47,7 +47,7 @@ MODULE Fonts; (** portable / source: Win32.Fonts.Mod *)	(* ejz *)
 		VAR mod: Modules.Module;
 	BEGIN
 		FontId := 0DBX; Default := NIL;
-		(*mod := Modules.ThisMod("WinFonts")*)
+		mod := Modules.ThisMod("WinFonts")
 	END Init;
 
 BEGIN

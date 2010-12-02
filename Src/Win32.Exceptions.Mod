@@ -1,6 +1,6 @@
 (* Copyright (c) 1994 - 2000 Emil J. Zeller *)
 
-MODULE Exceptions; (** non-portable / source: Win32.Exceptions.Mod *)	(* ejz  *)
+MODULE Exceptions; (** non-portable / source: Win32.Exceptions.Mod *)	(* ejz *)
 	IMPORT SYSTEM, Kernel32, Kernel, Modules, Types, Strings, Threads;
 
 	CONST
@@ -263,7 +263,7 @@ MODULE Exceptions; (** non-portable / source: Win32.Exceptions.Mod *)	(* ejz  *)
 				END
 			END;
 			lastfp := fp;
-			SYSTEM.GET(fp+4, pc);  SYSTEM.GET(fp, fp); (* return addr from stack *)
+			SYSTEM.GET(fp+4, pc); SYSTEM.GET(fp, fp); (* return addr from stack *)
 			IF (fp < lastfp) OR (fp >= e.t.stackBottom) THEN RETURN Abort END; (* not called from stack *)
 			mod := Kernel.GetMod(pc)
 		END
@@ -293,7 +293,7 @@ MODULE Exceptions; (** non-portable / source: Win32.Exceptions.Mod *)	(* ejz  *)
 				Kernel32.Ln()
 			END;
 			lastfp := fp;
-			SYSTEM.GET(fp+4, pc);  SYSTEM.GET(fp, fp); (* return addr from stack *)
+			SYSTEM.GET(fp+4, pc); SYSTEM.GET(fp, fp); (* return addr from stack *)
 			IF (fp < lastfp) OR (fp >= stackBottom) THEN EXIT END; (* not called from stack *)
 			mod := Kernel.GetMod(pc)
 		END;
@@ -419,3 +419,58 @@ BEGIN
 	theContext := NIL; inDispatch := FALSE; displayTrap := NIL;
 	Modules.InstallTermHandler(Shutdown)
 END Exceptions.
+
+(**
+	TYPE
+		MyException = RECORD (Exceptions.UserException)
+		END;
+
+	PROCEDURE P();
+		VAR e: MyException;
+		PROCEDURE Handler(VAR e: Exceptions.Exception): LONGINT;
+		BEGIN
+			IF e IS MyException THEN
+				...
+				RETURN Exceptions.Ignore / Forward / Abort
+			ELSE
+				RETURN Exceptions.Abort / Forward
+			END
+		END Handler;
+	BEGIN
+		...
+		Exceptions.Raise(e)
+		...
+
+
+	PROCEDURE P();
+		VAR e: MyException; context: Context;
+		PROCEDURE Handler(VAR e: Exceptions.Exception): LONGINT;
+		BEGIN
+			IF e IS MyException THEN
+				...
+				RETURN Exceptions.ReturnFail(context)
+			ELSE
+				RETURN Exceptions.Abort / Forward
+			END
+		END Handler;
+	BEGIN
+		IF ~Exceptions.Failed(context) THEN (* no error occured *)
+			...
+			Exceptions.Raise(e)
+			...
+		ELSE (* error occured and Exceptions.ReturnFail was called *)
+			...
+		END
+
+
+	PROCEDURE P();
+		VAR context: Context;
+	BEGIN
+		IF ~Exceptions.Failed(context) THEN (* no error occured *)
+			...
+			Exceptions.Fail(context)
+			...
+		ELSE (* Exceptions.Fail was called *)
+			...
+		END
+*)

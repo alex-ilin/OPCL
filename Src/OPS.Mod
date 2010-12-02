@@ -1,4 +1,4 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 (* Oberon Portable Scanner (front end) *)
@@ -421,3 +421,46 @@ MODULE OPS;	(** non-portable *)
 BEGIN
 	Init
 END OPS.
+
+(*
+	Generate Enumeration:
+	ProgTools.Enum 0 *
+		null
+		times slash div mod and
+		plus minus or eql neq  lss leq gtr geq in is
+		arrow period comma
+		colon upto rparen rbrak rbrace
+		of then do to by
+		lparen lbrak lbrace
+		not
+		becomes
+		number nil true false string
+		ident semicolon bar end else
+		elsif until if case while
+		repeat for loop with exit
+		return array object record pointer begin code
+		const type var procedure import
+		module eof
+		~
+
+	Generate Import List
+	ProgTools.Enum OPS
+		null
+		times slash div mod and
+		plus minus or eql neq  lss leq gtr geq in is
+		arrow period comma
+		colon upto rparen rbrak rbrace
+		of then do to by
+		lparen lbrak lbrace
+		not
+		becomes
+		number nil true false string
+		ident semicolon bar end else
+		elsif until if case while
+		repeat for loop with exit
+		return array object record pointer begin code
+		const type var procedure import
+		module eof
+		~
+
+*)

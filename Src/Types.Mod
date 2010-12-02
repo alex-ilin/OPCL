@@ -1,9 +1,9 @@
-(* ETH Oberon, Copyright 2000 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
+(* ETH Oberon, Copyright 2001 ETH Zuerich Institut fuer Computersysteme, ETH Zentrum, CH-8092 Zuerich.
 Refer to the "General ETH Oberon System Source License" contract available at: http://www.oberon.ethz.ch/ *)
 
 MODULE Types;	(** non-portable *)     (* RC 16.1.92 / MH 30.8.93 adapted to Oberon for Windows *)
 
-(**Module Types allow mappings between type names and types, and for exploring the type extensions at run time.
+(** Module Types allow mappings between type names and types, and for exploring the type extensions at run time.
 *)
 
 IMPORT Modules, Kernel, S := SYSTEM;
