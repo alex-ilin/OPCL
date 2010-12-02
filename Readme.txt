@@ -8,6 +8,8 @@ Source License" contract available at http://www.oberon.ethz.ch/
 
 Command line wrapper and 'readme' by Eugene Shcherbatyuk.
 Current maintainer: Alexander Iljin <ajsoft@yandex.ru>.
+Contributors:
+	Kemet (elbrusstudio ÑÎÁÀÊÀ mail ÒÎ×ÊÀ ru)
 
 Notes on usage
 
