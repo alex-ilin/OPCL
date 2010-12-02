@@ -1787,7 +1787,7 @@ ASSERT((this >= text.VirtualAddress) & (this <= (text.VirtualAddress+text.Virtua
 			INC(i);	ch := CmdLine.text[i]; (* Skip blanks in front of filename *)
 		END;
 		k := 0;
-		WHILE (ch > " ") & (k < LEN(name)) DO
+		WHILE (ch > " ") & (k < LEN(name) - 1) DO
 			name[k] := ch;	INC(k);
 			INC(i);	ch := CmdLine.text[i];
 		END;
