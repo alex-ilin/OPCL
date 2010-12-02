@@ -7,6 +7,7 @@ ETH Zentrum, CH-8092 Zuerich. Refer to the "General ETH Oberon System
 Source License" contract available at http://www.oberon.ethz.ch/
 
 Command line wrapper and 'readme' by Eugene Shcherbatyuk
+Current maintainer: Alexander Iljin <ajsoft@yandex.ru>.
 
 Notes on usage
 
