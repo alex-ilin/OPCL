@@ -181,7 +181,7 @@ MODULE O2ETHCLC;
 			b := b OR (ch = "w") OR (ch = "W") OR (ch = "p") OR (ch = "P");
 			b := b OR (ch = "z") OR (ch = "Z") OR (ch = "a") OR (ch = "A");
 			b := b OR (ch = "x") OR (ch = "X") OR (ch = "t") OR (ch = "T");
-			b := b OR (ch = "v") OR (ch = "V") OR (ch = "1") OR (ch = "2");
+			b := b OR (ch = "v") OR (ch = "V") OR (ch = "1") OR (ch = "2") OR (ch = "3");
 			IF ~b THEN
 				Console.Write(ch);
 				Console.WriteString(" - wrong option");	Console.WriteLn();
