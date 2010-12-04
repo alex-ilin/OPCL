@@ -75,6 +75,13 @@ MODULE O2ETHCLC;
 
 	(***********************************)
 	PROCEDURE GetOptions(VAR path, name, opts: ARRAY OF CHAR):BOOLEAN;
+		CONST
+			NoParameters = "No parameters specified";
+			NoPath = "No path specified";
+			NoFile = "No file specified";
+			NoOptions = "No options specified";
+			InvalidOptions = "Invalid options: '@' expected";
+			SlashQuestionForHelp = "Run 'O2ETHCLC /?' for help";
 		VAR i, j, k: LONGINT; ch: CHAR;
 	BEGIN
 		path[0] := 0X; name[0] := 0X; opts[0] := 0X; i := 0;
@@ -86,8 +93,8 @@ MODULE O2ETHCLC;
 		END;
 		j := i;
 		IF ch = 0X THEN
-			Console.WriteString("No parameters specified");	Console.WriteLn;
-			Console.WriteString("Run 'O2ETHCLC /?' for help");	Console.WriteLn;
+			Console.WriteString(NoParameters);	Console.WriteLn;
+			Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 			RETURN FALSE;
 		END;
 		(* look for path or switches *)
@@ -101,8 +108,8 @@ MODULE O2ETHCLC;
 			IF     ch = "?"   THEN About(); RETURN FALSE;
 			ELSIF (ch = "*")  THEN AboutOptions(); RETURN FALSE;
 			ELSIF (ch <= " ") THEN
-				Console.WriteString("No path specified");	Console.WriteLn;
-				Console.WriteString("Run 'O2ETHCLC /?' for help");	Console.WriteLn;
+				Console.WriteString(NoPath);	Console.WriteLn;
+				Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 				RETURN FALSE;
 			ELSE
 				k := 0;
@@ -128,8 +135,8 @@ MODULE O2ETHCLC;
 		END;
 		name[k] := 0X;
 		IF k = 0 THEN
-			Console.WriteString("No file specified");	Console.WriteLn;
-			Console.WriteString("Run 'O2ETHCLC /?' for help");	Console.WriteLn;
+			Console.WriteString(NoFile);	Console.WriteLn;
+			Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 			RETURN FALSE;
 		END;
 		Console.WriteString("file=");Console.WriteString(name);	Console.WriteLn();
@@ -140,15 +147,15 @@ MODULE O2ETHCLC;
 		IF ch = 0X THEN (* There were no options *)
 			RETURN TRUE;
 		ELSIF (ch # "@") THEN
-			Console.WriteString("Invalid options: '@' expected");	Console.WriteLn;
-			Console.WriteString("Run 'O2ETHCLC /?' for help");	Console.WriteLn;
+			Console.WriteString(InvalidOptions);	Console.WriteLn;
+			Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 			RETURN FALSE;
 		ELSIF ch = "@" THEN
 			INC(i);
 			ch := CmdLine.text[i];
 			IF ch <= " " THEN
-				Console.WriteString("No options specified");	Console.WriteLn;
-				Console.WriteString("Run 'O2ETHCLC /?' for help");	Console.WriteLn;
+				Console.WriteString(NoOptions);	Console.WriteLn;
+				Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 				RETURN FALSE;
 			END;
 			k := 0;
