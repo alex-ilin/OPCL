@@ -201,13 +201,12 @@ MODULE O2ETHCLC;
 
 	(***********************************)
 	PROCEDURE ParseOptions(VAR options: ARRAY OF CHAR; VAR opt: SET);
-		VAR i: LONGINT;	ch: CHAR;
+		VAR i: LONGINT;
 	BEGIN
 		opt := OPM.DefOpt;
 		i := 0;
 		LOOP
-			ch := options[i];	INC(i);
-			CASE ch OF
+			CASE options[i] OF
 			| 0X: EXIT
 			| "f": INCL(opt, OPM.nofiles)
 			| "F": EXCL(opt, OPM.nofiles)
@@ -235,6 +234,7 @@ MODULE O2ETHCLC;
 			| "2": INCL(opt, OPM.oberon2);	EXCL(opt, OPM.oberon1)
 			| "1": INCL(opt, OPM.oberon1);	EXCL(opt, OPM.oberon2)
 			END;
+			INC(i);
 		END;
 	END ParseOptions;
 
