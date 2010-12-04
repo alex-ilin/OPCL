@@ -11,11 +11,11 @@ The module SYSTEM contains definitions that are necessary to program <i>low-leve
 <p>
 The subsequent definitions are applicable to the ETH Oberon for which SYSTEM is implemented directly in the compiler. The procedures are compiled as in-line code.
 <p>
-If a module source text contains assembler code, the module SYSTEM must be imported to invoke the <a href="http://www.oberon.ethz.ch/native/compiler/">built-in assembler</a>. It is not permitted to import SYSTEM when creating portable binaries in Oberon for Windows or MacOberon.
+If a module source text contains assembler code, the module SYSTEM must be imported to invoke the <a href="http://www-old.oberon.ethz.ch/native/compiler/">built-in assembler</a>. It is not permitted to import SYSTEM when creating portable binaries in Oberon for Windows or MacOberon.
 <p>
 Get some inspiration from the nicely written and informative documentation on the <a href="http://www.cs.sun.ac.za/courses/pregrad/rw252/op2_asm.html">assembler</a> used to teach a course in low-level programming by Jacques Egloff.
 <p>
-The majority of the procedures were first defined in the book "Programming in Oberon" by Reiser and Wirth, in the SYSTEM section of the <a href="http://www.oberon.ethz.ch/oreport.html#SYSTEM">Oberon Language Report</a>. A few others are new. They should be available on most Oberon implementations. CC defined in the book, is not present in ETH Oberon. Individual implementations may include definitions that are particular to the specific, underlying computer, as is the case for Native Oberon.
+The majority of the procedures were first defined in the book "Programming in Oberon" by Reiser and Wirth, in the SYSTEM section of the <a href="http://www-old.oberon.ethz.ch/oreport.html#SYSTEM">Oberon Language Report</a>. A few others are new. They should be available on most Oberon implementations. CC defined in the book, is not present in ETH Oberon. Individual implementations may include definitions that are particular to the specific, underlying computer, as is the case for Native Oberon.
 <p>
 <h3>Types</h3> 
 BYTE, a placeholder that can only be allocated and assigned. No other operation is defined on it. No representation of values is specified. Instead, certain compatibility rules with other types are given: 
