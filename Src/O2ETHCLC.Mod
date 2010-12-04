@@ -270,7 +270,7 @@ MODULE O2ETHCLC;
 			Texts.OpenReader(r, t, 0);
 			Texts.WriteString(W, name);
 			OPS.Init;
-			Module(r, path, name, opt, pc, Texts.Log, error)
+			Module(r, path, opt, pc, Texts.Log, error)
 		ELSE
 			Texts.WriteString(W, name);	Texts.WriteString(W, " not found");
 			Texts.WriteLn(W); Texts.Append(Texts.Log, W.buf);
@@ -279,7 +279,7 @@ MODULE O2ETHCLC;
 	END CompileFile;
 
 	(***********************************)
-	PROCEDURE Module(source: Texts.Reader; path, name, options: ARRAY OF CHAR; breakpc: LONGINT;
+	PROCEDURE Module(source: Texts.Reader; path, options: ARRAY OF CHAR; breakpc: LONGINT;
 			log: Texts.Text; VAR error: BOOLEAN);
 		VAR opt: SET; extSF, newSF: BOOLEAN; p: OPT.Node; modName: OPS.Name;
 	BEGIN
