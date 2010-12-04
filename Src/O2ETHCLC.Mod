@@ -113,7 +113,7 @@ MODULE O2ETHCLC;
 				RETURN FALSE;
 			ELSE
 				k := 0;
-				WHILE (ch > " ") & (k < LEN(path)) DO
+				WHILE (ch > " ") & (k < LEN(path) - 1) DO
 					path[k] := ch;	INC(k);
 					INC(i);	ch := CmdLine.text[i];
 				END;
@@ -129,7 +129,7 @@ MODULE O2ETHCLC;
 			INC(i);	ch := CmdLine.text[i]; (* Skip blanks in front of filename *)
 		END;
 		k := 0;
-		WHILE (ch > " ") & (k < LEN(name)) DO
+		WHILE (ch > " ") & (k < LEN(name) - 1) DO
 			name[k] := ch;	INC(k);
 			INC(i);	ch := CmdLine.text[i];
 		END;
@@ -159,7 +159,7 @@ MODULE O2ETHCLC;
 				RETURN FALSE;
 			END;
 			k := 0;
-			WHILE (ch > " ") & (k < LEN(opts)) DO
+			WHILE (ch > " ") & (k < LEN(opts) - 1) DO
 				opts[k] := ch;	INC(k);
 				INC(i);	ch := CmdLine.text[i];
 			END;
