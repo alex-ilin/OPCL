@@ -255,7 +255,9 @@ MODULE Registry; (** non-portable / source: Win32.Registry.Mod *)	(* ejz *)
 			ELSIF ch = "=" THEN
 				value[i] := 0X; i := 0; COPY(value, name)
 			ELSIF ch > " " THEN
-				value[i] := ch; INC(i)
+				IF i < LEN(value) - 1 THEN (* truncate too long values *)
+					value[i] := ch; INC(i)
+				END;
 			ELSE
 				value[i] := 0X
 			END
