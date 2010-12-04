@@ -24,7 +24,6 @@ MODULE O2ETHCLC;
 	VAR
 		W: Texts.Writer;
 
-
 	(***********************************)
 	PROCEDURE About;
 	BEGIN
@@ -84,7 +83,7 @@ MODULE O2ETHCLC;
 			SlashQuestionForHelp = "Run 'O2ETHCLC /?' for help";
 		VAR i, j, k: LONGINT; ch: CHAR;
 	BEGIN
-		path[0] := 0X; name[0] := 0X; opts[0] := 0X; i := 0;
+		path[0] := 0X;	name[0] := 0X;	opts[0] := 0X;	i := 0;
 		(* Skip executable pathname *)
 		ch := CmdLine.text[i];
 		WHILE (ch # " ") & (ch # 0X) DO
@@ -201,7 +200,7 @@ MODULE O2ETHCLC;
 	END CheckOptions;
 
 	(***********************************)
-	PROCEDURE ParseOptions(VAR options: ARRAY OF CHAR;  VAR opt: SET);
+	PROCEDURE ParseOptions(VAR options: ARRAY OF CHAR; VAR opt: SET);
 		VAR i: LONGINT;	ch: CHAR;
 	BEGIN
 		opt := OPM.DefOpt;
@@ -253,7 +252,7 @@ MODULE O2ETHCLC;
 		END;
 	END Compile;
 
-(***********************************)
+	(***********************************)
 	PROCEDURE SignOn;
 	BEGIN
 		Texts.WriteString(W, "Oberon Portable Compiler / nw, rc, nm, tk, prk");	Texts.WriteLn(W);
@@ -273,7 +272,7 @@ MODULE O2ETHCLC;
 			OPS.Init;
 			Module(r, path, name, opt, pc, Texts.Log, error)
 		ELSE
-			Texts.WriteString(W, name); Texts.WriteString(W, " not found");
+			Texts.WriteString(W, name);	Texts.WriteString(W, " not found");
 			Texts.WriteLn(W); Texts.Append(Texts.Log, W.buf);
 			error := TRUE;
 		END
