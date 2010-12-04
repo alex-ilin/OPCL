@@ -170,12 +170,24 @@ MODULE O2ETHCLC;
 	END GetOptions;
 
 	(***********************************)
+	PROCEDURE Cap(ch: CHAR): CHAR;
+		(* Standard CAP ruins non-latin characters, and I need them intact. *)
+	BEGIN
+		CASE ch OF
+		| 'a'..'z':
+			RETURN CAP(ch)
+		ELSE
+			RETURN ch
+		END;
+	END Cap;
+
+	(***********************************)
 	PROCEDURE CheckOptions(opts: ARRAY OF CHAR): BOOLEAN;
 		VAR i: LONGINT;
 	BEGIN
 		i := 0;
 		WHILE opts[i] # 0X DO
-			CASE CAP(opts[i]) OF
+			CASE Cap(opts[i]) OF
 			| 'A', 'E', 'F', 'N', 'P', 'S', 'T', 'V', 'W', 'X', 'Z', '1', '2', '3':
 				INC(i);
 			ELSE
