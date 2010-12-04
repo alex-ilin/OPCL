@@ -171,19 +171,15 @@ MODULE O2ETHCLC;
 
 	(***********************************)
 	PROCEDURE CheckOptions(opts: ARRAY OF CHAR): BOOLEAN;
-		VAR i: LONGINT; b: BOOLEAN; ch: CHAR;
+		VAR i: LONGINT;
 	BEGIN
 		i := 0;
 		WHILE (opts[i] # 0X) DO
-			ch := opts[i];	INC(i);
-			b :=      (ch = "f") OR (ch = "F") OR (ch = "n") OR (ch = "N");
-			b := b OR (ch = "e") OR (ch = "E") OR (ch = "s") OR (ch = "S");
-			b := b OR (ch = "w") OR (ch = "W") OR (ch = "p") OR (ch = "P");
-			b := b OR (ch = "z") OR (ch = "Z") OR (ch = "a") OR (ch = "A");
-			b := b OR (ch = "x") OR (ch = "X") OR (ch = "t") OR (ch = "T");
-			b := b OR (ch = "v") OR (ch = "V") OR (ch = "1") OR (ch = "2") OR (ch = "3");
-			IF ~b THEN
-				Console.Write(ch);
+			CASE CAP(opts[i]) OF
+			| 'A', 'E', 'F', 'N', 'P', 'S', 'T', 'V', 'W', 'X', 'Z', '1', '2', '3':
+				INC(i);
+			ELSE
+				Console.Write(opts[i]);
 				Console.WriteString(" - wrong option");	Console.WriteLn();
 				Console.WriteString("Run 'O2ETHCLC /*' for help");	Console.WriteLn;
 				RETURN FALSE;
