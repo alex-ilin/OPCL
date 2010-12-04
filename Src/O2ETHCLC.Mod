@@ -309,7 +309,8 @@ MODULE O2ETHCLC;
 					IF OPM.noerr THEN
 						OPL.OutCode(modName);
 						IF OPM.noerr THEN
-							OPM.LogWStr ("   ");	OPM.LogWNum(OPO.pc, 1)
+							OPM.LogWStr ("  code=");	OPM.LogWNum(OPO.pc, 1);
+							OPM.LogWStr ("; data=");	OPM.LogWNum(OPO.dsize, 1);
 						END
 					END
 				END;
