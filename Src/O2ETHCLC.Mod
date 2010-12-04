@@ -26,50 +26,50 @@ MODULE O2ETHCLC;
 
 
 	(***********************************)
-	PROCEDURE About();
+	PROCEDURE About;
 	BEGIN
-		Console.WriteLn();
-		Console.WriteString("Command line version of the ETH Oberon Plugin for");	Console.WriteLn();
-		Console.WriteString("Windows  Release 2.4  Oberon  Portable  Compiler.");	Console.WriteLn();
-		Console.WriteLn();
-		Console.WriteString("  Compiler by: Team of the Institute for Computer");	Console.WriteLn();
-		Console.WriteString("  Systems  of  ETH  Zuerich  (www.oberon.ethz.ch)");	Console.WriteLn();
-		Console.WriteString("  Wrapper  by: E.V. Shcherbatyuk   (ugns@mail.ru)");	Console.WriteLn();
-		Console.WriteLn();
-		Console.WriteString("Run 'O2ETHCLC /?' for this information.");	Console.WriteLn();
-		Console.WriteString("Run 'O2ETHCLC /*' for help on compiler options.");	Console.WriteLn();
-		Console.WriteString("Run 'O2ETHCLC [/path] file [@options]' to compile.");	Console.WriteLn();
-		Console.WriteLn();
-		Console.WriteString("path - path to read and store object files (with trailing '\')");	Console.WriteLn();
-		Console.WriteString("@options - compiler options to be turned on/off");	Console.WriteLn();
+		Console.WriteLn;
+		Console.WriteString("Command line version of the ETH Oberon Plugin for");	Console.WriteLn;
+		Console.WriteString("Windows  Release 2.4  Oberon  Portable  Compiler.");	Console.WriteLn;
+		Console.WriteLn;
+		Console.WriteString("  Compiler by: Team of the Institute for Computer");	Console.WriteLn;
+		Console.WriteString("  Systems  of  ETH  Zuerich  (www.oberon.ethz.ch)");	Console.WriteLn;
+		Console.WriteString("  Wrapper  by: E.V. Shcherbatyuk   (ugns@mail.ru)");	Console.WriteLn;
+		Console.WriteLn;
+		Console.WriteString("Run 'O2ETHCLC /?' for this information.");	Console.WriteLn;
+		Console.WriteString("Run 'O2ETHCLC /*' for help on compiler options.");	Console.WriteLn;
+		Console.WriteString("Run 'O2ETHCLC [/path] file [@options]' to compile.");	Console.WriteLn;
+		Console.WriteLn;
+		Console.WriteString("path - path to read and store object files (with trailing '\')");	Console.WriteLn;
+		Console.WriteString("@options - compiler options to be turned on/off");	Console.WriteLn;
 	END About;
 
 	(***********************************)
-	PROCEDURE AboutOptions();
+	PROCEDURE AboutOptions;
 	BEGIN
-		Console.WriteString("Run 'O2ETHCLC [/path] file [@options]' to compile.");	Console.WriteLn();
-		Console.WriteLn();
-		Console.WriteString("path - path to read and store object files (with trailing '\')");	Console.WriteLn();
-		Console.WriteString("@options - compiler options to be turned on/off");	Console.WriteLn();
-		Console.WriteLn();
-		Console.WriteString("Available options are:");	Console.WriteLn();
-		Console.WriteString("f,F - prevent/allow creation of files");	Console.WriteLn();
-		Console.WriteString("n,N - prevent/allow generation of new Symbol table");	Console.WriteLn();
-		Console.WriteString("e,E - prevent/allow extension of symbol table");	Console.WriteLn();
-		Console.WriteString("s,S - prevent/allow compilation of modules importing SYSTEM");	Console.WriteLn();
-		Console.WriteString("w,W - hide/display warning messages");	Console.WriteLn();
-		Console.WriteLn();
-		Console.WriteString("p,P - don't/do initialize pointers to NIL");	Console.WriteLn();
-		Console.WriteString("z,Z - don't/do zero all the stack (only if ptrinit)");	Console.WriteLn();
-		Console.WriteString("a,A - don't/do evaluate ASSERT functions");	Console.WriteLn();
-		Console.WriteString("x,X - don't/do check indexes");	Console.WriteLn();
-		Console.WriteString("t,T - don't/do check types");	Console.WriteLn();
-		Console.WriteString("v,V - don't/do check overflows");	Console.WriteLn();
-		Console.WriteLn();
-		Console.WriteString("3 - compile Active Oberon");	Console.WriteLn();
-		Console.WriteString("2 - compile Oberon-2");	Console.WriteLn();
-		Console.WriteString("1 - compile Oberon-1");	Console.WriteLn();
-		Console.WriteLn();
+		Console.WriteString("Run 'O2ETHCLC [/path] file [@options]' to compile.");	Console.WriteLn;
+		Console.WriteLn;
+		Console.WriteString("path - path to read and store object files (with trailing '\')");	Console.WriteLn;
+		Console.WriteString("@options - compiler options to be turned on/off");	Console.WriteLn;
+		Console.WriteLn;
+		Console.WriteString("Available options are:");	Console.WriteLn;
+		Console.WriteString("f,F - prevent/allow creation of files");	Console.WriteLn;
+		Console.WriteString("n,N - prevent/allow generation of new Symbol table");	Console.WriteLn;
+		Console.WriteString("e,E - prevent/allow extension of symbol table");	Console.WriteLn;
+		Console.WriteString("s,S - prevent/allow compilation of modules importing SYSTEM");	Console.WriteLn;
+		Console.WriteString("w,W - hide/display warning messages");	Console.WriteLn;
+		Console.WriteLn;
+		Console.WriteString("p,P - don't/do initialize pointers to NIL");	Console.WriteLn;
+		Console.WriteString("z,Z - don't/do zero all the stack (only if ptrinit)");	Console.WriteLn;
+		Console.WriteString("a,A - don't/do evaluate ASSERT functions");	Console.WriteLn;
+		Console.WriteString("x,X - don't/do check indexes");	Console.WriteLn;
+		Console.WriteString("t,T - don't/do check types");	Console.WriteLn;
+		Console.WriteString("v,V - don't/do check overflows");	Console.WriteLn;
+		Console.WriteLn;
+		Console.WriteString("3 - compile Active Oberon");	Console.WriteLn;
+		Console.WriteString("2 - compile Oberon-2");	Console.WriteLn;
+		Console.WriteString("1 - compile Oberon-1");	Console.WriteLn;
+		Console.WriteLn;
 		Console.WriteString("Default options are FneSwPZAXTv3");
 	END AboutOptions;
 
@@ -105,9 +105,9 @@ MODULE O2ETHCLC;
 		IF ch = "/" THEN
 			INC(i);
 			ch := CmdLine.text[i];
-			IF     ch = "?"   THEN About(); RETURN FALSE;
-			ELSIF (ch = "*")  THEN AboutOptions(); RETURN FALSE;
-			ELSIF (ch <= " ") THEN
+			IF    ch = "?"  THEN About; RETURN FALSE;
+			ELSIF ch = "*"  THEN AboutOptions; RETURN FALSE;
+			ELSIF ch <= " " THEN
 				Console.WriteString(NoPath);	Console.WriteLn;
 				Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 				RETURN FALSE;
@@ -118,7 +118,7 @@ MODULE O2ETHCLC;
 					INC(i);	ch := CmdLine.text[i];
 				END;
 				path[k] := 0X;
-				Console.WriteString("path=");	Console.WriteString(path);	Console.WriteLn();
+				Console.WriteString("path=");	Console.WriteString(path);	Console.WriteLn;
 			END;
 		ELSE
 			i := j; (* There were no path or switches *)
@@ -139,14 +139,14 @@ MODULE O2ETHCLC;
 			Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 			RETURN FALSE;
 		END;
-		Console.WriteString("file=");Console.WriteString(name);	Console.WriteLn();
+		Console.WriteString("file=");Console.WriteString(name);	Console.WriteLn;
 		(* look for options *)
 		WHILE (ch <= " ") & (ch # 0X) DO
 			INC(i);	ch := CmdLine.text[i]; (* Skip blanks in front of options *)
 		END;
 		IF ch = 0X THEN (* There were no options *)
 			RETURN TRUE;
-		ELSIF (ch # "@") THEN
+		ELSIF ch # "@" THEN
 			Console.WriteString(InvalidOptions);	Console.WriteLn;
 			Console.WriteString(SlashQuestionForHelp);	Console.WriteLn;
 			RETURN FALSE;
@@ -164,7 +164,7 @@ MODULE O2ETHCLC;
 				INC(i);	ch := CmdLine.text[i];
 			END;
 			opts[k] := 0X;
-			Console.WriteString("opts=");	Console.WriteString(opts);	Console.WriteLn();
+			Console.WriteString("opts=");	Console.WriteString(opts);	Console.WriteLn;
 			RETURN TRUE;
 		END;
 	END GetOptions;
@@ -174,13 +174,13 @@ MODULE O2ETHCLC;
 		VAR i: LONGINT;
 	BEGIN
 		i := 0;
-		WHILE (opts[i] # 0X) DO
+		WHILE opts[i] # 0X DO
 			CASE CAP(opts[i]) OF
 			| 'A', 'E', 'F', 'N', 'P', 'S', 'T', 'V', 'W', 'X', 'Z', '1', '2', '3':
 				INC(i);
 			ELSE
 				Console.Write(opts[i]);
-				Console.WriteString(" - wrong option");	Console.WriteLn();
+				Console.WriteString(" - wrong option");	Console.WriteLn;
 				Console.WriteString("Run 'O2ETHCLC /*' for help");	Console.WriteLn;
 				RETURN FALSE;
 			END;
@@ -253,7 +253,7 @@ MODULE O2ETHCLC;
 	PROCEDURE CompileFile(path, name, opt: ARRAY OF CHAR; VAR error: BOOLEAN);
 		VAR t: Texts.Text; r: Texts.Reader; pc: LONGINT;
 	BEGIN
-		SignOn();
+		SignOn;
 		NEW(t);	Texts.Open(t, name);
 		IF t.len # 0 THEN
 			Texts.OpenReader(r, t, 0);
@@ -343,7 +343,7 @@ MODULE O2ETHCLC;
 
 (***********************************)
 BEGIN
-	Compile();
+	Compile;
 END O2ETHCLC.
 
 PELinker.Link O2ETHCLC.Link~
