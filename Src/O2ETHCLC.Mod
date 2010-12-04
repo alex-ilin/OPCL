@@ -208,33 +208,33 @@ MODULE O2ETHCLC;
 		i := 0;
 		LOOP
 			ch := options[i];	INC(i);
-			IF ch = 0X THEN EXIT
-			ELSIF ch = "f" THEN INCL(opt, OPM.nofiles)
-			ELSIF ch = "F" THEN EXCL(opt, OPM.nofiles)
-			ELSIF ch = "n" THEN EXCL(opt, OPM.newsf)
-			ELSIF ch = "N" THEN INCL(opt, OPM.newsf)
-			ELSIF ch = "e" THEN EXCL(opt, OPM.extsf)
-			ELSIF ch = "E" THEN INCL(opt, OPM.extsf)
-			ELSIF ch = "s" THEN INCL(opt, OPM.systemchk)
-			ELSIF ch = "S" THEN EXCL(opt, OPM.systemchk)
-			ELSIF ch = "w" THEN EXCL(opt, OPM.warning)
-			ELSIF ch = "W" THEN INCL(opt, OPM.warning)
-			ELSIF ch = "p" THEN EXCL(opt, OPM.ptrinit)
-			ELSIF ch = "P" THEN INCL(opt, OPM.ptrinit)
-			ELSIF ch = "z" THEN EXCL(opt, OPM.fullstackinit)
-			ELSIF ch = "Z" THEN
-	 IF OPM.ptrinit IN opt THEN INCL(opt, OPM.fullstackinit) END
-			ELSIF ch = "a" THEN EXCL(opt, OPM.assert)
-			ELSIF ch = "A" THEN INCL(opt, OPM.assert)
-			ELSIF ch = "x" THEN EXCL(opt, OPM.inxchk)
-			ELSIF ch = "X" THEN INCL(opt, OPM.inxchk)
-			ELSIF ch = "t" THEN EXCL(opt, OPM.typchk)
-			ELSIF ch = "T" THEN INCL(opt, OPM.typchk)
-			ELSIF ch = "v" THEN EXCL(opt, OPM.ovflchk)
-			ELSIF ch = "V" THEN INCL(opt, OPM.ovflchk)
-			ELSIF ch = "3" THEN EXCL(opt, OPM.oberon2);	EXCL(opt, OPM.oberon1)
-			ELSIF ch = "2" THEN INCL(opt, OPM.oberon2);	EXCL(opt, OPM.oberon1)
-			ELSIF ch = "1" THEN INCL(opt, OPM.oberon1);	EXCL(opt, OPM.oberon2)
+			CASE ch OF
+			| 0X: EXIT
+			| "f": INCL(opt, OPM.nofiles)
+			| "F": EXCL(opt, OPM.nofiles)
+			| "n": EXCL(opt, OPM.newsf)
+			| "N": INCL(opt, OPM.newsf)
+			| "e": EXCL(opt, OPM.extsf)
+			| "E": INCL(opt, OPM.extsf)
+			| "s": INCL(opt, OPM.systemchk)
+			| "S": EXCL(opt, OPM.systemchk)
+			| "w": EXCL(opt, OPM.warning)
+			| "W": INCL(opt, OPM.warning)
+			| "p": EXCL(opt, OPM.ptrinit)
+			| "P": INCL(opt, OPM.ptrinit)
+			| "z": EXCL(opt, OPM.fullstackinit)
+			| "Z": IF OPM.ptrinit IN opt THEN INCL(opt, OPM.fullstackinit) END
+			| "a": EXCL(opt, OPM.assert)
+			| "A": INCL(opt, OPM.assert)
+			| "x": EXCL(opt, OPM.inxchk)
+			| "X": INCL(opt, OPM.inxchk)
+			| "t": EXCL(opt, OPM.typchk)
+			| "T": INCL(opt, OPM.typchk)
+			| "v": EXCL(opt, OPM.ovflchk)
+			| "V": INCL(opt, OPM.ovflchk)
+			| "3": EXCL(opt, OPM.oberon2);	EXCL(opt, OPM.oberon1)
+			| "2": INCL(opt, OPM.oberon2);	EXCL(opt, OPM.oberon1)
+			| "1": INCL(opt, OPM.oberon1);	EXCL(opt, OPM.oberon2)
 			END;
 		END;
 	END ParseOptions;
