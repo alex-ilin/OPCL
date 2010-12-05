@@ -48,7 +48,7 @@ History
 - Add full sources, made compiler and linker self-compilable
 - Add Makefiles for GNU Make and CompileAndLink.bat files
 - Add Linker '/d' option
-- Add HelloDLL sample projects
+- Add HelloDLL.* sample projects
 - EOL converted to Windows CRLF, removed binary file headers
 - Fix inline assembler (OPA.Mod) LF and comment handling
 - Update documentation
