@@ -23,7 +23,7 @@ o2c.exe OPC.Mod
 o2c.exe OPP.Mod
 o2c.exe OPV.Mod
 o2c.exe CmdLine.Mod
-o2c.exe o2c.Mod
+o2c.exe O2ETHCLC.Mod
 
 o2c.exe Types.Mod
 o2c.exe Win32.Threads.Mod
