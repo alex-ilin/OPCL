@@ -2,7 +2,7 @@
 # Run 'make' to make the projects.
 
 # Projects = space separated list of the exe-files to build
-Projects := HelloCon.exe HelloGUI.exe HelloDLL.dll HelloDLL.exe
+Projects := HelloCon.exe HelloGUI.exe HelloDLL.dll HelloDLL.exe CapTest.exe
 # Platform = file name prefix for the target platform modules
 Platform := Win32
 # Compiler name to be used

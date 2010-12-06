@@ -10,8 +10,10 @@ o2ethclc.exe User32.Mod
 o2ethclc.exe HelloGUI.Mod
 o2ethclc.exe HelloDLL.Mod
 o2ethclc.exe HelloDLLMain.Mod
+o2ethclc.exe CapTest.Mod
 
 o2ethcll.exe HelloCon.exe.Link
 o2ethcll.exe HelloGUI.exe.Link
 o2ethcll.exe HelloDLL.dll.Link
 o2ethcll.exe HelloDLL.exe.Link
+o2ethcll.exe CapTest.exe.Link
