@@ -1,7 +1,7 @@
 (* Copyright (c) 1994 - 2000 Emil J. Zeller *)
 
 MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz *)
-	IMPORT SYSTEM, Kernel32, Kernel, Registry;
+	IMPORT SYSTEM, Kernel32, Kernel;
 
 (** The FileDir module implements the naming of files in directories. *)
 
@@ -386,12 +386,13 @@ must be calculated. When
 		PathChar := pathChar;
 		Kernel32.GetCurrentDirectory(LEN(workPath), workPath);
 		i := 0; ret := 0;
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Files", sysPath);
+		(* todo: obtain "Files" from ini file *)
+		(*Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Files", sysPath);
 		IF Registry.res = Registry.Done THEN
 			IF Kernel32.SetCurrentDirectory(sysPath) # Kernel32.False THEN
 				ret := Kernel32.GetCurrentDirectory(LEN(sysPath), sysPath)
 			END
-		END;
+		END;*)
 		IF ret = 0 THEN
 			Kernel32.GetModuleFileName(Kernel.hInstance, sysPath, LEN(sysPath));
 			j := -1;
@@ -407,7 +408,9 @@ must be calculated. When
 			END;
 			searchPath[i] := 0X
 		END;
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Directories", dirs);
+		
+		(* todo: obtain "Directories" from ini file *)
+		(*Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Directories", dirs);
 		IF Registry.res # Registry.Done THEN dirs := "" END;
 		IF dirs[0] = '"' THEN j := 1 ELSE j := 0 END;
 		k := 0;
@@ -420,27 +423,28 @@ must be calculated. When
 			INC(j)
 		END;
 		AddDir();
-		searchPath[i] := 0X;
+		searchPath[i] := 0X;*)
 		ret := 0;
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Temp", tempPath);
+		(* todo: obtain "Temp" from ini file *)
+		(*Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Temp", tempPath);
 		IF Registry.res = Registry.Done THEN
 			ConvertChar(tempPath, pathChar, WinPathChar);
 			Kernel32.SetCurrentDirectory(sysPath);
 			IF Kernel32.SetCurrentDirectory(tempPath) # Kernel32.False THEN
 				ret := Kernel32.GetCurrentDirectory(LEN(tempPath), tempPath)
 			END
-		END;
+		END;*)
 		IF ret = 0 THEN
 			Kernel32.GetTempPath(LEN(tempPath), tempPath)
 		END;
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Work", dir);
+		(*Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Work", dir);
 		IF (Registry.res = Registry.Done) & (dir # "") THEN
 			ConvertChar(dir, pathChar, WinPathChar);
 			Kernel32.SetCurrentDirectory(sysPath);
 			IF Kernel32.SetCurrentDirectory(dir) # Kernel32.False THEN
 				Kernel32.GetCurrentDirectory(LEN(workPath), workPath)
 			END
-		END;
+		END;*)
 		Kernel32.SetCurrentDirectory(workPath);
 		Kernel32.LeaveCriticalSection(moduleCS)
 	END Init;
