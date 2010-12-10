@@ -1,10 +1,10 @@
 o2ethclc.exe Win32.Kernel32.Mod
 o2ethclc.exe Win32.Kernel.Mod
 o2ethclc.exe Win32.ADVAPI32.Mod
-o2ethclc.exe Win32.Registry.Mod
 o2ethclc.exe Win32.FileDir.Mod
 o2ethclc.exe Win32.Files.Mod
 o2ethclc.exe Win32.Modules.Mod
+o2ethclc.exe Console.Mod
 o2ethclc.exe HelloCon.Mod
 o2ethclc.exe User32.Mod
 o2ethclc.exe HelloGUI.Mod

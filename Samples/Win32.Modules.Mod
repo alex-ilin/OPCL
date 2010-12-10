@@ -8,7 +8,7 @@ MODULE Modules;	(** portable, except where noted *)	(* rc/mh/jm/tk/ard/rml/prk/p
  It is responsible for loading and freeing modules.
 *)
 
-IMPORT Kernel32, Kernel, Registry, FileDir, Files, SYSTEM;
+IMPORT Kernel32, Kernel, FileDir, Files, SYSTEM;
 
 CONST
 	done = 0;
@@ -847,7 +847,23 @@ END Shutdown;
 
 BEGIN
 	Kernel32.InitializeCriticalSection(moduleCS); InstallTermHandler(Shutdown);
-	Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "ModExt", extension);
-	IF Registry.res # Registry.Done THEN extension := "" END;
-	IF extension = "" THEN extension := ".Obj" END; locked := FALSE
+	(* todo: take out extension to ini file.
+	должно ли расширение файла-модуля настраиваться? Есть ли в этом смысл? *)
+	extension := ".Obj"; locked := FALSE
 END Modules.
+
+(** Remarks:
+
+1. Oberon uses reference counting to determine how many clients of a module are loaded.
+A module can only be freed when the reference count is 0.
+
+2. The res codes are not the same numerically on all Oberon platforms. It is advisable to use
+the resMsg as a correct indication of the error condition.
+
+3. Module and command names are single words consisting of A to Z, a to z, and 0 to 9.
+Names must not start with a digit.
+
+4. Care should be taken freeing modules. Oberon cannot detect if a client has a procedure
+variable still "pointing" at code in a freed module. Calling such a procedure can be
+unpredictable at times, although the system generates a trap most of the time.
+*)
