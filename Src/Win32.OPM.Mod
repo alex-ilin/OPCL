@@ -123,6 +123,7 @@ MODULE OPM;	(** non-portable *)
 		MinLReal*, MaxLReal*: LONGREAL;
 		noerr*: BOOLEAN;	(* no error found until now *)
 		curpos*, errpos*: LONGINT;	(* character and error position in source file *)
+		line, col: LONGINT;	(* current line and column in source file *)
 		breakpos*: LONGINT;	(* set by Mark *)
 		breakpc*: LONGINT;	(*set by OPV.Init*)
 		errors: ARRAY NumErrors DIV SetLen OF SET;
@@ -153,6 +154,7 @@ MODULE OPM;	(** non-portable *)
 		VAR i: SHORTINT;
 	BEGIN inR := source; Log := log; options := opt;
 		noerr := TRUE; curpos := Texts.Pos(inR); errpos := curpos; lastpos := curpos-10;
+		line := 1; col := 0;
 		FOR i := 0 TO NumErrors DIV SetLen - 1 DO errors[i] := {} END;
 		Kernel.GC()
 	END Init;
@@ -164,10 +166,18 @@ MODULE OPM;	(** non-portable *)
 	END Close;
 
 	PROCEDURE Get*(VAR ch: CHAR);	(* read next character from source text, Eot if no more *)
+		VAR prevch: CHAR;
 	BEGIN
 		(* System3 get: skip embedded objects *)
 		(*REPEAT*)
-			Texts.Read(inR, ch); INC(curpos)
+			prevch := ch;
+			Texts.Read(inR, ch); INC(curpos);
+			CASE ch OF (* supported 0DX (Oberon), 0AX (UNIX), 0DX+0AX (Windows) *)
+			| 0DX: INC(line); col := 0 (* the Oberon end of line character *)
+			| 0AX: IF prevch # 0DX THEN INC(line); col := 0 END (* the UNIX end of line character *)
+			ELSE
+				INC(col);
+			END;
 		(*UNTIL inR.eot OR ((inR.lib # NIL) & (inR.lib IS Fonts.Font))*)
 	END Get;
 
@@ -278,7 +288,8 @@ MODULE OPM;	(** non-portable *)
 			IF (pos < lastpos) OR (lastpos + 9 < pos) OR (n>=450) & (n<=460) OR (n=155) THEN lastpos := pos;
 				LogWLn; LogW(9X); LogW(9X);
 				IF (n<450) OR (n>460) THEN
-					LogWStr("pos"); LogWNum(pos, 7);
+					LogWStr("line"); LogWNum(line, 7);
+					IF col # 0 THEN LogWStr("  col"); LogWNum(col, 5) END;
 					IF n = 255 THEN LogWStr("  pc "); LogWHex(breakpc); breakpos := pos
 					ELSIF n = 254 THEN LogWStr("  pc not found")
 					ELSE LogWStr("  err"); LogWNum(n, 4); ErrorMsg(n)
@@ -291,7 +302,9 @@ MODULE OPM;	(** non-portable *)
 				END
 			END
 		ELSIF warning IN options THEN
-			LogWLn; LogW(9X); LogW(9X); LogWStr("pos"); LogWNum(pos, 7); LogWStr("  warning"); LogWNum(-n, 4);
+			LogWLn; LogW(9X); LogW(9X); LogWStr("line"); LogWNum(line, 7);
+			IF col # 0 THEN LogWStr("  col"); LogWNum(col, 5) END;
+			LogWStr("  warning"); LogWNum(-n, 4);
 			ErrorMsg(-n)
 		END
 	END Mark;
