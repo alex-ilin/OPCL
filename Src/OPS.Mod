@@ -148,7 +148,7 @@ MODULE OPS;	(** non-portable *)
 	BEGIN i := 0;
 		REPEAT
 			name[i] := ch; INC(i); OPM.Get(ch)
-		UNTIL (ch < "0") OR ("9" < ch) & (CAP(ch) < "A") OR ("Z" < CAP(ch)) OR (i = MaxIdLen);
+		UNTIL (ch < "0") OR ("9" < ch) & (CAP(ch) < "A") OR ("Z" < CAP(ch)) & (ch # "_") OR (i = MaxIdLen);
 		IF i = MaxIdLen THEN err(240); DEC(i) END ;
 		name[i] := 0X; sym := ident
 	END Identifier;
@@ -395,7 +395,7 @@ MODULE OPS;	(** non-portable *)
 						IF name = "WHILE" THEN s := while
 						ELSIF name = "WITH" THEN s := with
 						END
-			| "G".."H", "J", "K", "Q", "S", "X".."Z": Identifier(s)
+			| "G".."H", "J", "K", "Q", "S", "X".."Z", "_": Identifier(s)
 			| "["  : s := lbrak; OPM.Get(ch)
 			| "]"  : s := rbrak; OPM.Get(ch)
 			| "^"  : s := arrow; OPM.Get(ch)
