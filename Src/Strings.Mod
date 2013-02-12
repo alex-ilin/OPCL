@@ -5,7 +5,7 @@ MODULE Strings; (** portable *)	(* ejz *)
 (** Strings is a utility module that provides procedures to manipulate strings.
 		Note: All strings MUST be 0X terminated. *)
 
-	IMPORT Dates, Reals, FileDir, Registry;
+	IMPORT Dates, Reals, FileDir(*, Registry*);
 
 	CONST
 		CR* = 0DX; (** the Oberon end of line character *)
@@ -830,10 +830,10 @@ END StrToReal;
 	PROCEDURE Init();
 		VAR i: LONGINT;
 	BEGIN
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "DateFormat", dateform);
-		IF Registry.res # Registry.Done THEN dateform := "" END;
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "TimeFormat", timeform);
-		IF Registry.res # Registry.Done THEN timeform := "" END;
+		(* todo: take out date format and time format to ini file *)
+		dateform := "";
+		timeform := "";
+		
 
 		sDayName[0] := "Mon";	sDayName[1] := "Tue";	sDayName[2] := "Wed";	sDayName[3] := "Thu";
 		sDayName[4] := "Fri";	sDayName[5] := "Sat";	sDayName[6] := "Sun";

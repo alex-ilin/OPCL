@@ -1,6 +1,6 @@
 MODULE HelloCon;
-	IMPORT Kernel32;
+	IMPORT Console;
 BEGIN
-	Kernel32.Str("Hello from Oberon!");
-	Kernel32.Ln();
+	Console.WriteString("Hello from Oberon!");
+	Console.WriteLn();
 END HelloCon.

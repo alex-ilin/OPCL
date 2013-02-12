@@ -1,7 +1,7 @@
 (* Copyright (c) 1994 - 2000 Emil J. Zeller *)
 
-MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz  *)
-	IMPORT SYSTEM, Kernel32, Kernel, Registry;
+MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz *)
+	IMPORT SYSTEM, Kernel32, Kernel;
 
 (** The FileDir module implements the naming of files in directories. *)
 
@@ -27,7 +27,7 @@ MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz  *)
 		PathChar-: CHAR; (** directory separator *)
 		moduleCS: Kernel32.CriticalSection;
 
- (** Replace all occurences of character from in name by to. *)
+(** Replace all occurences of character from in name by to. *)
 	PROCEDURE ConvertChar*(VAR name: ARRAY OF CHAR; from, to: CHAR);
 		VAR i: LONGINT;
 	BEGIN
@@ -38,8 +38,8 @@ MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz  *)
 		END
 	END ConvertChar;
 
- (** Search the (relative) filename name in the current directory. If it could not be found all directories in the search path
- 	are searched for name. fileName returns the full (absolute) name for the file found. *)
+(** Search the (relative) filename name in the current directory. If it could not be found all directories in the search path
+are searched for name. fileName returns the full (absolute) name for the file found. *)
 	PROCEDURE FindFile*(name: ARRAY OF CHAR; VAR fullname: ARRAY OF CHAR; usepath: BOOLEAN): BOOLEAN;
 		VAR ret: LONGINT; fileName: Kernel32.LPSTR;
 	BEGIN
@@ -109,7 +109,7 @@ MODULE FileDir; (** non-portable / source: Win32.FileDir.Mod *)	(* ejz  *)
 		RETURN (a[i] = 0X) & (b[j] = 0X)
 	END SameName;
 
- (** Compute the relative filename (relative to the working directory). *)
+(** Compute the relative filename (relative to the working directory). *)
 	PROCEDURE RelFileName*(fileName: ARRAY OF CHAR; VAR relFileName: ARRAY OF CHAR);
 		VAR
 			i, j, k, p: LONGINT;
@@ -386,12 +386,13 @@ must be calculated. When
 		PathChar := pathChar;
 		Kernel32.GetCurrentDirectory(LEN(workPath), workPath);
 		i := 0; ret := 0;
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Files", sysPath);
+		(* todo: obtain "Files" from ini file *)
+		(*Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Files", sysPath);
 		IF Registry.res = Registry.Done THEN
 			IF Kernel32.SetCurrentDirectory(sysPath) # Kernel32.False THEN
 				ret := Kernel32.GetCurrentDirectory(LEN(sysPath), sysPath)
 			END
-		END;
+		END;*)
 		IF ret = 0 THEN
 			Kernel32.GetModuleFileName(Kernel.hInstance, sysPath, LEN(sysPath));
 			j := -1;
@@ -407,7 +408,9 @@ must be calculated. When
 			END;
 			searchPath[i] := 0X
 		END;
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Directories", dirs);
+		
+		(* todo: obtain "Directories" from ini file *)
+		(*Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Directories", dirs);
 		IF Registry.res # Registry.Done THEN dirs := "" END;
 		IF dirs[0] = '"' THEN j := 1 ELSE j := 0 END;
 		k := 0;
@@ -420,27 +423,28 @@ must be calculated. When
 			INC(j)
 		END;
 		AddDir();
-		searchPath[i] := 0X;
+		searchPath[i] := 0X;*)
 		ret := 0;
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Temp", tempPath);
+		(* todo: obtain "Temp" from ini file *)
+		(*Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Temp", tempPath);
 		IF Registry.res = Registry.Done THEN
 			ConvertChar(tempPath, pathChar, WinPathChar);
 			Kernel32.SetCurrentDirectory(sysPath);
 			IF Kernel32.SetCurrentDirectory(tempPath) # Kernel32.False THEN
 				ret := Kernel32.GetCurrentDirectory(LEN(tempPath), tempPath)
 			END
-		END;
+		END;*)
 		IF ret = 0 THEN
 			Kernel32.GetTempPath(LEN(tempPath), tempPath)
 		END;
-		Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Work", dir);
+		(*Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "Work", dir);
 		IF (Registry.res = Registry.Done) & (dir # "") THEN
 			ConvertChar(dir, pathChar, WinPathChar);
 			Kernel32.SetCurrentDirectory(sysPath);
 			IF Kernel32.SetCurrentDirectory(dir) # Kernel32.False THEN
 				Kernel32.GetCurrentDirectory(LEN(workPath), workPath)
 			END
-		END;
+		END;*)
 		Kernel32.SetCurrentDirectory(workPath);
 		Kernel32.LeaveCriticalSection(moduleCS)
 	END Init;
@@ -448,3 +452,9 @@ must be calculated. When
 BEGIN
 	Init()
 END FileDir.
+
+(** Remarks:
+
+1. Newly created files are always written in the working directory when no absolute filename is specified. Opening a file searches in the current directory, followed by each directory in the path in return.
+
+2. The search path for files is specified by the Directories key in the System section of the Registry. *)

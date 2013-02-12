@@ -3,7 +3,7 @@ SUBSYSTEM CUI
 IMGVERSION 2.4
 HEAPSIZE 010000H
 MODULES
-	Kernel32, Kernel, ADVAPI32, Registry, FileDir, Files, Modules, HelloCon
+	Kernel32, Kernel, ADVAPI32, FileDir, Files, Modules, Console, HelloCon
 IMPORTS
 	Kernel.bootHeapAdr = HeapAdr,
 	Kernel.bootHeapSize = HeapSize,

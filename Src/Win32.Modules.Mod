@@ -8,7 +8,7 @@ MODULE Modules;	(** portable, except where noted *)	(* rc/mh/jm/tk/ard/rml/prk/p
  It is responsible for loading and freeing modules.
 *)
 
-IMPORT Kernel32, Kernel, Registry, FileDir, Files, SYSTEM;
+IMPORT Kernel32, Kernel, FileDir, Files, SYSTEM;
 
 CONST
 	done = 0;
@@ -847,9 +847,9 @@ END Shutdown;
 
 BEGIN
 	Kernel32.InitializeCriticalSection(moduleCS); InstallTermHandler(Shutdown);
-	Registry.GetKeyValue(Registry.CurrentUser, Registry.oberonSystem, "ModExt", extension);
-	IF Registry.res # Registry.Done THEN extension := "" END;
-	IF extension = "" THEN extension := ".Obj" END; locked := FALSE
+	(* todo: take out extension to ini file.
+	должно ли расширение файла-модуля настраиваться? Есть ли в этом смысл? *)
+	extension := ".Obj"; locked := FALSE
 END Modules.
 
 (** Remarks:
